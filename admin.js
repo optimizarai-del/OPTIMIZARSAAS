@@ -1,5 +1,5 @@
 // admin.js - Lógica específica para el panel unificado de clientes y analíticas
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     // Render de la navegación superior
     renderAuthenticatedNav('admin');
 
@@ -61,7 +61,7 @@ function closeUserModal() {
     modal.style.display = 'none';
 }
 
-form.addEventListener('submit', (e) => {
+form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const id = document.getElementById('user-id').value;
     const roleType = document.getElementById('user-role-hf').value;
@@ -69,6 +69,12 @@ form.addEventListener('submit', (e) => {
     const email = document.getElementById('user-email').value;
     const password = document.getElementById('user-password').value;
     
+    // UI Feedback
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.textContent = 'guardando...';
+    submitBtn.disabled = true;
+
     if (id) {
         // Modo Edición
         const updates = { name, email };
@@ -97,7 +103,7 @@ form.addEventListener('submit', (e) => {
             updates.specialButtons = specialBtns;
         }
 
-        updateUser(id, updates);
+        await updateUser(id, updates);
     } else {
         // Modo Creación
         const allowedPages = roleType === 'admin' ? ['all'] : ['dashboard'];
@@ -123,9 +129,11 @@ form.addEventListener('submit', (e) => {
             extraData.specialButtons = specialBtns;
         }
 
-        const res = registerUser(name, email, password, roleType, allowedPages, extraData);
+        const res = await registerUser(name, email, password, roleType, allowedPages, extraData);
         if (!res.success) {
             alert(res.message);
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
             return;
         }
 
@@ -138,10 +146,13 @@ form.addEventListener('submit', (e) => {
         });
     }
     
+    submitBtn.textContent = originalText;
+    submitBtn.disabled = false;
+    
     closeUserModal();
-    renderClientsTable();
-    renderAdminsTable();
-    if(roleType === 'user') loadGlobalMetrics();
+    await renderClientsTable();
+    await renderAdminsTable();
+    if(roleType === 'user') loadGlobalMetrics(); // already async
 });
 
 // ==========================================================================
@@ -190,8 +201,8 @@ El equipo de Optimizar AI`);
 // ==========================================================================
 // Edición y Eliminación
 // ==========================================================================
-function editUserRecord(userId) {
-    const users = getAllUsers();
+async function editUserRecord(userId) {
+    const users = await getAllUsers();
     const user = users.find(u => u.id === userId);
     if(!user) return;
 
@@ -258,13 +269,13 @@ function addSpecialButtonField(nameVal, urlVal) {
     container.appendChild(div);
 }
 
-function removeUserRecord(userId) {
+async function removeUserRecord(userId) {
     // Protección simple 
     if(confirm("¿Estás seguro que deseas eliminar este registro permanentemente?")) {
-        const res = deleteUser(userId);
+        const res = await deleteUser(userId);
         if (res.success) {
-            renderClientsTable();
-            renderAdminsTable();
+            await renderClientsTable();
+            await renderAdminsTable();
             loadGlobalMetrics(); // Refrescar gráficos
         } else {
             alert(res.message);
@@ -280,9 +291,11 @@ function viewClientDashboard(clientId) {
 // ==========================================================================
 // Tablas (Admins & Clientes)
 // ==========================================================================
-function renderAdminsTable() {
-    const admins = getAllUsers().filter(u => u.role === 'admin');
+async function renderAdminsTable() {
+    const all = await getAllUsers();
+    const admins = all.filter(u => u.role === 'admin');
     const tbody = document.getElementById('admins-table-body');
+    if(!tbody) return;
     tbody.innerHTML = '';
     
     admins.forEach(admin => {
@@ -299,9 +312,11 @@ function renderAdminsTable() {
     });
 }
 
-function renderClientsTable() {
-    const clients = getAllUsers().filter(u => u.role === 'user');
+async function renderClientsTable() {
+    const all = await getAllUsers();
+    const clients = all.filter(u => u.role === 'user');
     const tbody = document.getElementById('clients-table-body');
+    if(!tbody) return;
     tbody.innerHTML = '';
     
     clients.forEach(client => {
@@ -341,7 +356,8 @@ const chartColors = [
 ]; // Paleta vibrante para clientes
 
 async function loadGlobalMetrics() {
-    const clients = getAllUsers().filter(u => u.role === 'user');
+    const allu = await getAllUsers();
+    const clients = allu.filter(u => u.role === 'user');
     const trigger = document.getElementById('admin-client-multi-trigger');
     const dropdown = document.getElementById('admin-client-multi-dropdown');
     

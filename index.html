@@ -97,12 +97,22 @@
         const loginForm = document.getElementById('login-form');
         const loginError = document.getElementById('login-error');
 
-        loginForm.addEventListener('submit', (e) => {
+        loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            const res = login(email, password);
+            // Bloquear botón mientras carga
+            const btn = loginForm.querySelector('button[type="submit"]');
+            const originalText = btn.textContent;
+            btn.textContent = 'verificando...';
+            btn.disabled = true;
+
+            const res = await login(email, password);
+            
+            btn.textContent = originalText;
+            btn.disabled = false;
+
             if (res.success) {
                 // Redirigir basado en el rol, o siempre al dashboard (donde el menu les da opciones)
                 window.location.href = 'dashboard.html';

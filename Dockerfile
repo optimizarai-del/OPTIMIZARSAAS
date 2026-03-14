@@ -1,11 +1,18 @@
-# Usa la imagen oficial de Nginx ligera (Alpine)
-FROM nginx:alpine
+FROM node:20-alpine
 
-# Copia los archivos del proyecto (HTML, CSS, JS, etc.) a la carpeta de Nginx
-COPY . /usr/share/nginx/html
+WORKDIR /app
 
-# Expone el puerto 80 (el que Nginx usa por defecto y Easypanel mapeará)
+# Instalar dependencias primero para aprovechar la caché de Docker
+COPY package*.json ./
+RUN npm install
+
+# Copiar el resto del código
+COPY . .
+
+# Exponer el puerto 80 que usa Easypanel por defecto y NodeJS en este caso
 EXPOSE 80
 
-# Inicia Nginx en primer plano
-CMD ["nginx", "-g", "daemon off;"]
+# Asegurar que el directorio data exista para SQLite (Easypanel debe montar un volumen aquí)
+RUN mkdir -p data
+
+CMD ["node", "server.js"]
