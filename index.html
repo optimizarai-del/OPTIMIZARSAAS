@@ -113,11 +113,11 @@
             btn.textContent = originalText;
             btn.disabled = false;
 
-            if (res.success) {
+            if (res && res.success) {
                 // Redirigir basado en el rol, o siempre al dashboard (donde el menu les da opciones)
                 window.location.href = 'dashboard.html';
             } else {
-                loginError.textContent = res.message;
+                loginError.textContent = (res && res.message) ? res.message : 'Error desconocido al conectar con el servidor.';
                 loginError.style.display = 'block';
             }
         });

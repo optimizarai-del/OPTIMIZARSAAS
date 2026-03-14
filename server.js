@@ -217,6 +217,6 @@ app.get('*', (req, res) => {
 // =========================================================================
 // START SERVER
 // =========================================================================
-app.listen(PORT, () => {
-    console.log(`Optimizar Server is running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Optimizar Server is running on port ${PORT} bound to 0.0.0.0`);
 });
