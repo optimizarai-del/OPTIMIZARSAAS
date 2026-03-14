@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>optimizar - Mi Perfil</title>
+    <!-- Google Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="auth-styles.css">
+    
+    <!-- Auth System -->
+    <script src="auth.js"></script>
+    <script>
+        // Logueados (user o admin)
+        requireAuth(['admin', 'user']);
+    </script>
+</head>
+<body>
+
+    <header class="glass-container top-nav">
+        <div class="logo-area">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90" width="40" height="40" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" class="brand-icon">
+                <path d="M 20 45 v 20 h 20 v -35" />
+                <circle cx="20" cy="38" r="6" />
+                <circle cx="40" cy="24" r="6" />
+                <path d="M 40 50 l 30 -30" />
+                <path d="M 65 55 l -15 -15" />
+                <circle cx="65" cy="62" r="6" />
+                <path d="M 50 20 h 20 v 20" />
+            </svg>
+            <h1 class="brand-title">optimizar</h1>
+        </div>
+        <nav class="nav-buttons" id="main-nav">
+            <!-- Buttons generated dynamically -->
+        </nav>
+    </header>
+
+    <main class="dashboard-grid" style="display: flex; justify-content: center;">
+        <div class="glass-container" style="max-width: 600px; width: 100%;">
+            <div class="panel-header" style="margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 15px;">
+                <h2 style="text-transform: lowercase;">mi perfil</h2>
+            </div>
+            
+            <form id="profile-form">
+                <div id="profile-success" class="error-msg" style="background: rgba(34, 197, 94, 0.1); border-color: rgba(34, 197, 94, 0.3); color: #4ade80;">Perfil actualizado con éxito.</div>
+                
+                <div class="form-group">
+                    <label class="input-label">nombre:</label>
+                    <input type="text" id="prof-name" class="glass-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="input-label">correo electrónico:</label>
+                    <input type="email" id="prof-email" class="glass-input" required disabled style="opacity: 0.6; cursor: not-allowed;" title="No puedes cambiar tu correo registrado.">
+                </div>
+
+                <div class="form-group">
+                    <label class="input-label">rol asignado:</label>
+                    <input type="text" id="prof-role" class="glass-input" disabled style="opacity: 0.6; cursor: not-allowed; text-transform: uppercase; font-weight: bold; color: var(--accent-pink);">
+                </div>
+
+                <div class="form-group" style="margin-top: 30px;">
+                    <label class="input-label">cambiar contraseña (opcional):</label>
+                    <input type="password" id="prof-password" class="glass-input" placeholder="••••••••">
+                    <p id="password-req-msg" style="color: #fbbf24; font-size: 0.85rem; display: none; margin-top: 5px;">* Debes asignar una nueva contraseña para continuar.</p>
+                </div>
+                
+                <button type="submit" class="btn-optimizar" style="width: 100%; margin-top: 20px;">actualizar perfil</button>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        renderAuthenticatedNav('profile');
+        
+        const session = getCurrentSession();
+        document.getElementById('prof-name').value = session.name;
+        document.getElementById('prof-email').value = session.email;
+        document.getElementById('prof-role').value = session.role;
+
+        if(session.requiresPasswordChange) {
+            document.getElementById('password-req-msg').style.display = 'block';
+            document.getElementById('prof-password').required = true;
+            document.getElementById('prof-password').placeholder = "Ingresa tu nueva contraseña";
+        }
+
+        const form = document.getElementById('profile-form');
+        const successMsg = document.getElementById('profile-success');
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('prof-name').value;
+            const newPassword = document.getElementById('prof-password').value;
+            
+            const updates = { name: name };
+            if (newPassword) {
+                updates.password = newPassword;
+                updates.requiresPasswordChange = false; // Reset the flag
+            }
+
+            if (updateUser(session.userId, updates)) {
+                successMsg.style.display = 'block';
+                document.getElementById('prof-password').value = ''; // Limpiar campo
+                document.getElementById('password-req-msg').style.display = 'none';
+                document.getElementById('prof-password').required = false;
+                session.requiresPasswordChange = false; // Update local reference
+
+                // Actualizar la nav si el nombre cambió
+                renderAuthenticatedNav('profile');
+                
+                setTimeout(() => { 
+                    successMsg.style.display = 'none'; 
+                    // Si venía forzado, ahora puede ir al dashboard
+                    window.location.href = 'dashboard.html';
+                }, 1500);
+            }
+        });
+    </script>
+</body>
+</html>

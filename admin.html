@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>optimizar - Panel de Control Admin</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse para CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="auth-styles.css">
+    
+    <!-- Auth System -->
+    <script src="auth.js"></script>
+    <script>
+        requireAuth(['admin']);
+    </script>
+</head>
+<body>
+
+    <!-- Navegación Superior -->
+    <header class="glass-container top-nav">
+        <div class="logo-area">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90" width="40" height="40" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" class="brand-icon">
+                <path d="M 20 45 v 20 h 20 v -35" />
+                <circle cx="20" cy="38" r="6" />
+                <circle cx="40" cy="24" r="6" />
+                <path d="M 40 50 l 30 -30" />
+                <path d="M 65 55 l -15 -15" />
+                <circle cx="65" cy="62" r="6" />
+                <path d="M 50 20 h 20 v 20" />
+            </svg>
+            <h1 class="brand-title">optimizar</h1>
+        </div>
+        <nav class="nav-buttons" id="main-nav">
+            <!-- Dinámico -->
+        </nav>
+    </header>
+
+    <main class="admin-layout">
+        <!-- Sidebar Izquierdo -->
+        <aside class="glass-container admin-sidebar">
+            <button class="sidebar-btn" onclick="switchView('dashboard-admin')" id="btn-dashboard-admin">Dashboard Admin</button>
+            <button class="sidebar-btn active" onclick="switchView('usuarios')" id="btn-usuarios">Usuarios</button>
+            <button class="sidebar-btn" onclick="switchView('admins')" id="btn-admins">Admins</button>
+        </aside>
+
+        <!-- Contenido Principal -->
+        <section class="glass-container admin-main-content">
+            
+            <!-- VISTA: DASHBOARD ADMIN (NEW) -->
+            <div id="view-dashboard-admin" style="display: none;">
+                <div class="panel-header" style="margin-bottom: 20px;">
+                    <h2>dashboard admin (global)</h2>
+                </div>
+
+                <!-- Global Metrics Dashboard -->
+                <div class="glass-container global-metrics-header" style="margin-bottom: 20px; background: rgba(0,0,0,0.2); position: relative; z-index: 50;">
+                    <div class="metric-box">
+                        <label>total mensajes (global)</label>
+                        <p class="stat-value" id="global-total-msg">--</p>
+                    </div>
+
+                    <div class="glass-container date-controls" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px;">
+                        <div class="date-group">
+                            <label for="start-date-global">desde:</label>
+                            <input type="date" id="start-date-global" class="glass-input date-picker">
+                        </div>
+                        <div class="date-group">
+                            <label for="end-date-global">hasta:</label>
+                            <input type="date" id="end-date-global" class="glass-input date-picker">
+                        </div>
+                    </div>
+
+                    <div class="metric-box client-filter" style="position: relative;">
+                        <label>comparar clientes</label>
+                        <div class="glass-input multi-select-trigger" id="admin-client-multi-trigger" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 10px 15px;">
+                            <span id="admin-multi-label" style="opacity: 0.8; font-size: 0.9rem;">Todos los clientes</span>
+                            <span style="font-size: 0.7rem; margin-left:10px;">▼</span>
+                        </div>
+                        <!-- Dropdown de Checkboxes -->
+                        <div class="glass-container multi-select-dropdown" id="admin-client-multi-dropdown" style="display: none; position: absolute; top: calc(100% + 5px); left: 0; width: 100%; max-height: 250px; overflow-y: auto; z-index: 100; flex-direction: column; gap: 5px; background: rgba(15, 23, 42, 0.95); box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                            <!-- Dinámico -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráfico Global Multipropósito -->
+                <div class="glass-container chart-container" style="margin-bottom: 20px;">
+                    <div style="position: relative; height: 350px; width: 100%;">
+                        <canvas id="globalChart"></canvas>
+                    </div>
+                    <div id="chart-legend" class="legend-container">
+                        <!-- Dinámico -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA: USUARIOS (Clientes) -->
+            <div id="view-usuarios">
+                <div class="panel-header" style="margin-bottom: 20px;">
+                    <h2>clientes</h2>
+                    <button onclick="openCreateUserModal('user')" class="btn-optimizar">+ nuevo cliente</button>
+                </div>
+
+                <!-- Tabla de Clientes -->
+                <div class="table-container">
+                    <p style="font-size: 0.85rem; color: #fbbf24; margin-bottom: 10px;">Haz clic en el nombre del cliente para acceder a su dashboard de resultados en vivo.</p>
+                    <table class="optimizar-table">
+                        <thead>
+                            <tr>
+                                <th>Empresa / Cliente</th>
+                                <th>Correo Acceso</th>
+                                <th>CRM</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clients-table-body">
+                            <!-- Dinámico -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VISTA: ADMINS -->
+            <div id="view-admins" style="display: none;">
+                <div class="panel-header" style="margin-bottom: 20px;">
+                    <h2>gestión de administradores</h2>
+                    <button onclick="openCreateUserModal('admin')" class="btn-optimizar">+ nuevo admin</button>
+                </div>
+                
+                <div class="table-container">
+                    <table class="optimizar-table">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Correo Electrónico</th>
+                                <th>Rol</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admins-table-body">
+                            <!-- Dinámico -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- Modal para Crear/Añadir/Editar Usuario/Admin -->
+    <div id="user-modal" class="modal-overlay" style="display: none;">
+        <div class="glass-container modal-content scrollable">
+            <h2 id="modal-title">nuevo registro</h2>
+            <form id="user-form">
+                <input type="hidden" id="user-id">
+                <input type="hidden" id="user-role-hf">
+                
+                <!-- Campos Comunes -->
+                <div class="form-group">
+                    <label class="input-label">nombre del encargado:</label>
+                    <input type="text" id="user-name" class="glass-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="input-label">correo de acceso:</label>
+                    <input type="email" id="user-email" class="glass-input" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="input-label" id="lbl-password">contraseña por defecto:</label>
+                    <input type="text" id="user-password" class="glass-input" value="Optimizar123">
+                </div>
+
+                <!-- Campos Específicos para Clientes (Usuarios) -->
+                <div id="client-specific-fields">
+                    <div class="form-group">
+                        <label class="input-label">nombre de la empresa:</label>
+                        <input type="text" id="user-company" class="glass-input">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="input-label">enlace csv público (google sheets):</label>
+                        <input type="url" id="user-csv" class="glass-input" placeholder="https://docs.google.com/spreadsheets/...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="input-label">enlace webhook entrada (n8n):</label>
+                        <input type="url" id="user-webhook" class="glass-input" placeholder="https://n8n.optimizar-ia.com/webhook/...">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="input-label">enlace crm externo:</label>
+                        <input type="url" id="user-crm" class="glass-input" placeholder="https://mi-crm.com/cliente">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="input-label">enlace agente externo:</label>
+                        <input type="url" id="user-agente-externo" class="glass-input" placeholder="https://chat.optimizar-ia.com/agente">
+                    </div>
+
+                    <!-- Botones Especiales Dinámicos -->
+                    <div class="form-group" style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <label class="input-label" style="margin: 0; color: var(--accent-pink);">botones especiales (max 4)</label>
+                            <button type="button" class="btn-optimizar" id="btn-add-special" style="padding: 4px 10px; font-size: 0.75rem; background: rgba(244, 114, 182, 0.2); border-color: var(--accent-pink);">+ añadir botón</button>
+                        </div>
+                        <div id="special-buttons-container">
+                            <!-- Los inputs se generan por JS -->
+                        </div>
+                        <p style="font-size: 0.75rem; color: #aaa; margin-top: 10px;">Aparecerán junto al Agente y CRM en el Dashboard del cliente.</p>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button type="button" onclick="closeUserModal()" class="btn-optimizar" style="background: rgba(255,255,255,0.05); border-color: transparent;">cancelar</button>
+                    <button type="submit" class="btn-optimizar" style="flex:1;">guardar registro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Script de Lógica del Panel Admin Multi-Tenant -->
+    <script src="admin.js"></script>
+
+</body>
+</html>

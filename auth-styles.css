@@ -1,0 +1,242 @@
+/* ==========================================================================
+   Estilos Adicionales para Auth y Admin Panel (SaaS Extension)
+   ========================================================================== */
+
+/* Formularios Generales */
+.form-group {
+    margin-bottom: 20px;
+}
+
+/* Modales (Popups) */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    width: 100%;
+    max-width: 500px;
+    background: rgba(30, 30, 45, 0.85); /* Slightly darker for modal readability */
+}
+
+/* ... modal content scrolled ... */
+.modal-content.scrollable {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.modal-content::-webkit-scrollbar {
+    width: 6px;
+}
+.modal-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+.modal-content h2 {
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 10px;
+}
+
+/* Tablas Admin */
+.table-container {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: calc(100vh - 300px); /* Restringir el alto maximo */
+}
+
+.optimizar-table {
+    width: 100%;
+    border-collapse: collapse;
+    color: var(--text-primary);
+    text-align: left;
+}
+
+.optimizar-table th {
+    padding: 15px;
+    font-weight: 600;
+    color: var(--accent-blue);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+    text-transform: lowercase;
+}
+
+.optimizar-table td {
+    padding: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.optimizar-table tr:hover td {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+/* Botones y Navegación */
+.active-nav {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: var(--accent-blue);
+}
+
+/* Ajustes Responsive para Tablas */
+@media (max-width: 768px) {
+    .optimizar-table th, .optimizar-table td {
+        padding: 10px;
+        font-size: 0.9rem;
+    }
+}
+
+
+/* ==========================================================================
+   Admin Multi-Tenant Layout
+   ========================================================================== */
+
+.admin-layout {
+    display: flex;
+    gap: 20px;
+    height: calc(100vh - 100px);
+    overflow: hidden; /* Evitar scroll infinito en el body */
+}
+
+.admin-sidebar {
+    width: 250px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 20px;
+}
+
+.sidebar-btn {
+    text-align: left;
+    padding: 15px 20px;
+    border-radius: 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+}
+
+.sidebar-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+}
+
+.sidebar-btn.active {
+    background: rgba(56, 189, 248, 0.15); /* var(--accent-blue) */
+    border-color: rgba(56, 189, 248, 0.4);
+    color: white;
+}
+
+.admin-main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+    padding-right: 10px;
+    position: relative;
+}
+
+.admin-main-content::-webkit-scrollbar {
+    width: 6px;
+}
+.admin-main-content::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+.admin-main-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+/* Global Metrics Header */
+.global-metrics-header {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.metric-box {
+    flex: 1;
+    min-width: 150px;
+    padding: 15px 20px;
+    text-align: center;
+}
+
+.metric-box label {
+    font-size: 0.8rem;
+    margin-bottom: 5px;
+}
+
+.metric-box .stat-value {
+    font-size: 2rem;
+    margin-top: 0;
+}
+
+.client-filter {
+    min-width: 200px;
+}
+
+.legend-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+    justify-content: center;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: opacity 0.3s;
+}
+
+.legend-item.hidden {
+    opacity: 0.4;
+    text-decoration: line-through;
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.clickable-row {
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.clickable-row:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* CRM Button styling in table */
+.btn-crm {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    border-radius: 15px;
+    background: rgba(124, 58, 237, 0.2); /* Purple tint */
+    border: 1px solid rgba(124, 58, 237, 0.5);
+    color: white;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.3s;
+}
+
+.btn-crm:hover {
+    background: rgba(124, 58, 237, 0.4);
+    transform: translateY(-2px);
+}

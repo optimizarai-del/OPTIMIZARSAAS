@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>optimizar - Dashboard</title>
+    <!-- Google Fonts: Poppins -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="auth-styles.css">
+    
+    <!-- Auth System -->
+    <script src="auth.js"></script>
+    <script>
+        // Restringir el acceso antes de cargar la página (todos los roles pueden entrar)
+        requireAuth(['admin', 'user']);
+    </script>
+</head>
+<body>
+
+    <!-- Navegación Superior -->
+    <header class="glass-container top-nav">
+        <div class="logo-area">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90" width="40" height="40" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" class="brand-icon">
+                <path d="M 20 45 v 20 h 20 v -35" />
+                <circle cx="20" cy="38" r="6" />
+                <circle cx="40" cy="24" r="6" />
+                <path d="M 40 50 l 30 -30" />
+                <path d="M 65 55 l -15 -15" />
+                <circle cx="65" cy="62" r="6" />
+                <path d="M 50 20 h 20 v 20" />
+            </svg>
+            <h1 class="brand-title">optimizar</h1>
+        </div>
+        <nav class="nav-buttons" id="main-nav">
+            <!-- Los botones se generan dinámicamente desde auth.js -->
+        </nav>
+    </header>
+
+    <!-- Contenedor Principal -->
+    <main class="dashboard-grid">
+        
+        <!-- Panel Izquierdo: Gráfico y Estadísticas -->
+        <section class="left-panel">
+            
+            <!-- Título y Botones de Enlace (Agente/CRM) -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 id="dashboard-client-title" style="margin: 0;">dashboard</h2>
+                <div id="dashboard-external-links" style="display: flex; gap: 10px;">
+                    <!-- Botones dinámicos -->
+                </div>
+            </div>
+
+            <!-- Encabezado del Panel con Tarjetas -->
+            <div class="panel-header">
+                <div class="stats-cards">
+                    <div class="glass-container stat-card" style="padding: 15px;">
+                        <span class="stat-label">total mensajes</span>
+                        <h2 class="stat-value" id="total-messages" style="margin-top: 5px;">--</h2>
+                    </div>
+                </div>
+
+                <div class="glass-container date-controls">
+                    <div class="date-input-group">
+                        <label for="start-date" class="input-label">desde:</label>
+                        <input type="date" id="start-date" class="glass-input">
+                    </div>
+                    <div class="date-input-group">
+                        <label for="end-date" class="input-label">hasta:</label>
+                        <input type="date" id="end-date" class="glass-input">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenedor del Gráfico -->
+            <div class="glass-container chart-container">
+                <div style="position: relative; height: 350px; width: 100%;">
+                    <canvas id="responsesChart"></canvas>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Panel Derecho: Agente Interno (Chat) -->
+        <aside class="right-panel">
+            <div class="glass-container chat-container">
+                <div class="chat-header">
+                    <h2>agente interno</h2>
+                </div>
+                
+                <div class="chat-history" id="chat-history">
+                    <!-- Mensajes iniciales o historial se renderizarán aquí -->
+                    <div class="message system-msg">
+                        <p>Iniciando conexión interactiva...</p>
+                    </div>
+                </div>
+
+                <form class="chat-input-area" id="chat-form">
+                    <input type="text" id="chat-input" class="glass-input chat-field" placeholder="escribe tu mensaje..." autocomplete="off" required>
+                    <button type="submit" class="btn-optimizar send-btn">enviar</button>
+                </form>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Custom Script -->
+    <script src="script.js"></script>
+    <script>
+        // Generar el menú con botones de "Dashboard", "Perfil", "Admin", "Salir"
+        // Le pasamos 'dashboard' para que pinte ese botón activo
+        renderAuthenticatedNav('dashboard');
+    </script>
+</body>
+</html>

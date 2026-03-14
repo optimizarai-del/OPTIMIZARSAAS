@@ -1,0 +1,448 @@
+/* ==========================================================================
+   Variables Globales y Reset
+   ========================================================================== */
+   :root {
+    --font-family: 'Poppins', sans-serif;
+    --text-primary: #FFFFFF;
+    --text-secondary: rgba(255, 255, 255, 0.8);
+    --accent-pink: #f472b6;
+    --accent-blue: #38bdf8;
+    
+    /* Configuración Glassmorphism */
+    --glass-bg: rgba(255, 255, 255, 0.08);
+    --glass-border: 1.5px solid rgba(255, 255, 255, 0.25);
+    --glass-radius: 16px;
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    --glass-blur: blur(12px);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    color: var(--text-primary);
+    background: linear-gradient(125deg, #c044e0 0%, #a855f7 20%, #7c3aed 40%, #6366f1 60%, #4f86f7 80%, #38bdf8 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    padding: 20px;
+    font-weight: 400;
+}
+
+/* Tipografía */
+h1 {
+    font-weight: 800;
+    color: var(--text-primary);
+}
+
+h2 {
+    font-weight: 700;
+    color: var(--accent-pink);
+}
+
+p, span, div {
+    font-weight: 400;
+    color: var(--text-secondary);
+}
+
+label, .stat-label, .input-label {
+    font-weight: 600;
+    color: var(--accent-blue);
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+    text-transform: lowercase;
+}
+
+/* ==========================================================================
+   Componentes Reutilizables
+   ========================================================================== */
+
+/* Efecto Vidrio (Glassmorphism) */
+.glass-container {
+    background: var(--glass-bg);
+    border: var(--glass-border);
+    border-radius: var(--glass-radius);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-shadow);
+    padding: 20px;
+}
+
+/* Botón Brand "optimizar" */
+.btn-optimizar {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 30px;
+    font-weight: 600;
+    text-transform: lowercase;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    font-family: var(--font-family);
+    font-size: 1rem;
+}
+
+.btn-optimizar:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+/* Inputs y Selects integrados con Glassmorphism */
+.glass-input {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    padding: 10px 15px;
+    color: white;
+    font-family: var(--font-family);
+    outline: none;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.glass-input:focus {
+    border-color: var(--accent-blue);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Corrección de color en selector de fecha para navegadores Webkit */
+::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+
+/* ==========================================================================
+   Estructura / Layout Principal
+   ========================================================================== */
+
+/* Navegación Superior */
+.top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 15px 40px;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-title {
+    text-transform: lowercase;
+    font-size: 2rem;
+    letter-spacing: -1px;
+    margin: 0;
+}
+
+.nav-buttons {
+    display: flex;
+    gap: 15px;
+}
+
+/* Grid Principal */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 30px;
+    height: calc(100vh - 140px); /* Ajuste de altura dinámica menos el header */
+}
+
+/* ==========================================================================
+   Panel Izquierdo (Gráficos y Datos)
+   ========================================================================== */
+
+.left-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    gap: 20px;
+}
+
+.stats-cards {
+    display: flex;
+    gap: 20px;
+    flex: 1;
+}
+
+.stat-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    margin-top: 10px;
+}
+
+.date-controls {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+}
+
+.chart-container {
+    flex: 1;
+    position: relative;
+    padding: 30px;
+    min-height: 400px;
+}
+
+
+/* ==========================================================================
+   Panel Derecho (Agente Interno)
+   ========================================================================== */
+
+.right-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.chat-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    /* Ajuste de sombra extra para destacar panel de chat */
+    background: rgba(255, 255, 255, 0.1); 
+}
+
+.chat-header {
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 10px;
+}
+
+.chat-header h2 {
+    text-transform: lowercase;
+    font-size: 1.5rem;
+}
+
+.chat-history {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-right: 10px;
+}
+
+/* Custom Scrollbar for Chat */
+.chat-history::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chat-history::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.chat-history::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+}
+
+.message {
+    padding: 12px 16px;
+    border-radius: 12px;
+    max-width: 85%;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    position: relative;
+}
+
+.message p {
+    color: var(--text-primary);
+    font-weight: 400;
+}
+
+.system-msg {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    align-self: center;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.system-msg p {
+    color: var(--text-secondary);
+}
+
+.user-msg {
+    background: rgba(56, 189, 248, 0.2);
+    border: 1px solid rgba(56, 189, 248, 0.4);
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+}
+
+.bot-msg {
+    background: rgba(244, 114, 182, 0.2);
+    border: 1px solid rgba(244, 114, 182, 0.4);
+    align-self: flex-start;
+    border-bottom-left-radius: 2px;
+}
+
+.typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 15px !important;
+}
+
+.typing-dot {
+    width: 6px;
+    height: 6px;
+    background: var(--text-primary);
+    border-radius: 50%;
+    animation: typing 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes typing {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+}
+
+.chat-field {
+    flex: 1;
+}
+
+.send-btn {
+    padding: 12px 20px;
+}
+
+/* ==========================================================================
+   MULTI-SELECT CLIENT DROPDOWN (ADMIN GLOBAL DASHBOARD)
+   ========================================================================== */
+.multi-select-dropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+.multi-select-dropdown::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.multi-select-dropdown::-webkit-scrollbar-thumb {
+    background-color: var(--accent-pink);
+    border-radius: 10px;
+}
+
+.client-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 4px;
+    background: rgba(0,0,0,0.2);
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.client-checkbox:checked {
+    background-color: var(--accent-pink);
+    border-color: var(--accent-pink);
+}
+
+.client-checkbox:checked::after {
+    content: '✓';
+    color: white;
+    font-size: 12px;
+    position: absolute;
+}
+
+
+
+/* ==========================================================================
+   Responsive Design / Media Queries
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        height: auto;
+    }
+
+    .right-panel {
+        height: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+
+    .top-nav {
+        flex-direction: column;
+        gap: 20px;
+        padding: 20px;
+    }
+
+    .nav-buttons {
+        flex-wrap: wrap;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .btn-optimizar {
+        width: 100%;
+        text-align: center;
+    }
+
+    .panel-header {
+        flex-direction: column;
+    }
+
+    .stats-cards {
+        width: 100%;
+    }
+
+    .date-controls {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .date-input-group {
+        width: 100%;
+    }
+
+    .chart-container {
+        padding: 15px;
+        min-height: 300px;
+    }
+    
+    .stat-value {
+        font-size: 2rem;
+    }
+}
