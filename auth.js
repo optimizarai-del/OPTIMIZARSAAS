@@ -33,6 +33,8 @@ async function registerUser(name, email, password, role = 'user', allowedPages =
         crmUrl: extraData.crmUrl || '',
         agenteExternoUrl: extraData.agenteExternoUrl || '',
         specialButtons: extraData.specialButtons || [],
+        actionButtons: extraData.actionButtons || [],
+        customCharts: extraData.customCharts || [],
         requiresPasswordChange: extraData.requiresPasswordChange || false
     };
 

@@ -98,48 +98,50 @@ async function initializeDashboardConfig() {
         }
     } else {
         // MODO USUARIO NORMAL
-        CSV_URL = session.csvUrl || '';
-        WEBHOOK_URL = session.webhookUrl || '';
-        currentUserId = session.userId;
-        currentUserName = session.companyName || session.name;
-
-        // Cambiar titulo
-        const titleElement = document.getElementById('dashboard-client-title');
-        if (titleElement) {
-            titleElement.textContent = `dashboard: ${currentUserName}`;
-        }
-
-        // Inicializar switches de acción si el usuario tiene configurados
-        initActionSwitches(session.actionButtons || []);
-        // Inicializar gráficos personalizados
-        initCustomCharts(session.customCharts || []);
-        // Mostrar botones de enlaces externos
-        const linksContainer = document.getElementById('dashboard-external-links');
-        if (linksContainer) {
-            linksContainer.innerHTML = '';
+        console.log("Modo usuario detectado, buscando datos frescos...");
+        const users = typeof getAllUsers === 'function' ? await getAllUsers() : [];
+        const freshUser = users.find(u => String(u.id) === String(session.userId));
+        
+        if (freshUser) {
+            CSV_URL = freshUser.csvUrl || '';
+            WEBHOOK_URL = freshUser.webhookUrl || '';
+            currentUserId = freshUser.id;
+            currentUserName = freshUser.companyName || freshUser.name;
             
-            // Botón Agente Externo (Fijo)
-            if (session.agenteExternoUrl) {
-                linksContainer.innerHTML += `<a href="${session.agenteExternoUrl}" target="_blank" class="btn-optimizar" style="padding: 6px 15px; font-size: 0.85rem; background: rgba(56, 189, 248, 0.2); border-color: var(--accent-blue);">chat externo</a>`;
-            } else {
-                linksContainer.innerHTML += `<span class="btn-optimizar" style="padding: 6px 15px; font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); border-color: transparent; opacity: 0.5; cursor: not-allowed;" title="No configurado">chat externo</span>`;
-            }
+            // Inicializar elementos con datos frescos
+            initActionSwitches(freshUser.actionButtons || []);
+            initCustomCharts(freshUser.customCharts || []);
             
-            // Botón CRM (Fijo)
-            if (session.crmUrl) {
-                linksContainer.innerHTML += `<a href="${session.crmUrl}" target="_blank" class="btn-optimizar" style="padding: 6px 15px; font-size: 0.85rem; background: rgba(124, 58, 237, 0.2); border-color: rgba(124, 58, 237, 0.5);">abrir crm</a>`;
-            } else {
-                linksContainer.innerHTML += `<span class="btn-optimizar" style="padding: 6px 15px; font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); border-color: transparent; opacity: 0.5; cursor: not-allowed;" title="No configurado">abrir crm</span>`;
-            }
+            // Actualizar UI con datos frescos
+            const titleElement = document.getElementById('dashboard-client-title');
+            if (titleElement) titleElement.textContent = `dashboard: ${currentUserName}`;
             
-            // Botones Especiales (Dinámicos)
-            if (session.specialButtons && session.specialButtons.length > 0) {
-                session.specialButtons.forEach(btn => {
-                    if (btn.name && btn.url) {
-                        linksContainer.innerHTML += `<a href="${btn.url}" target="_blank" class="btn-optimizar" style="padding: 6px 15px; font-size: 0.85rem; background: rgba(244, 114, 182, 0.2); border-color: var(--accent-pink);">${btn.name.toLowerCase()}</a>`;
-                    }
-                });
+            const linksContainer = document.getElementById('dashboard-external-links');
+            if (linksContainer) {
+                linksContainer.innerHTML = '';
+                // Agente Externo
+                if (freshUser.agenteExternoUrl) {
+                    linksContainer.innerHTML += `<a href="${freshUser.agenteExternoUrl}" target="_blank" class="btn-optimizar" style="padding: 6px 15px; font-size: 0.85rem; background: rgba(56, 189, 248, 0.2); border-color: var(--accent-blue);">chat externo</a>`;
+                }
+                // CRM
+                if (freshUser.crmUrl) {
+                    linksContainer.innerHTML += `<a href="${freshUser.crmUrl}" target="_blank" class="btn-optimizar" style="padding: 6px 15px; font-size: 0.85rem; background: rgba(124, 58, 237, 0.2); border-color: rgba(124, 58, 237, 0.5);">abrir crm</a>`;
+                }
+                // Botones Especiales
+                if (freshUser.specialButtons && freshUser.specialButtons.length > 0) {
+                    freshUser.specialButtons.forEach(btn => {
+                        if (btn.name && btn.url) {
+                            linksContainer.innerHTML += `<a href="${btn.url}" target="_blank" class="btn-optimizar" style="padding: 6px 15px; font-size: 0.85rem; background: rgba(244, 114, 182, 0.2); border-color: var(--accent-pink);">${btn.name.toLowerCase()}</a>`;
+                        }
+                    });
+                }
             }
+        } else {
+            // Fallback a sesión si falla el fetch
+            CSV_URL = session.csvUrl || '';
+            WEBHOOK_URL = session.webhookUrl || '';
+            currentUserId = session.userId;
+            currentUserName = session.companyName || session.name;
         }
     }
 }
@@ -249,8 +251,15 @@ function processAndRenderData(dataToProcess, isFirstLoad = false) {
 
     // Agrupar por fecha
     const countsByDate = {};
-    data.forEach(row => {
-        // Los encabezados ya están normalizados a minúsculas en fetchCSVData (normalized[key.toLowerCase().trim()])
+    // FILTRO CRÍTICO: Solo mensajes de respuesta del AGENTE
+    const filteredData = data.filter(row => {
+        const sender = (row.usuario || row.remitente || row.role || '').toLowerCase().trim();
+        const clientNameLower = currentUserName.toLowerCase();
+        // El agente es cualquiera que NO sea el cliente y NO sea 'user/cliente' genérico
+        return sender !== clientNameLower && sender !== 'user' && sender !== 'cliente' && sender !== '';
+    });
+
+    filteredData.forEach(row => {
         let raw = row.fecha || row.date || '';
         let d = safeParseDate(raw);
         

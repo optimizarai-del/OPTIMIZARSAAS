@@ -647,8 +647,15 @@ function processGlobalChartData(cache, selectedClientIds, startVal, endVal) {
         if(!cache[cId]) return;
         
         const cData = cache[cId].rawData;
+        const clientNameLower = (cache[cId].name || '').toLowerCase();
         
-        cData.forEach(row => {
+        // FILTRO CRÍTICO: Solo respuestas de agentes
+        const agentOnlyData = cData.filter(row => {
+            const sender = (row['usuario'] || row['remitente'] || row['role'] || '').toLowerCase().trim();
+            return sender !== clientNameLower && sender !== 'user' && sender !== 'cliente' && sender !== '';
+        });
+
+        agentOnlyData.forEach(row => {
             let raw = row.fecha || row.Fecha;
             let d = safeParseDate(raw);
             if (!d) return;
