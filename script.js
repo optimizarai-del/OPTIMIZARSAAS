@@ -141,7 +141,9 @@ async function initializeDashboardConfig() {
             }
         }
     }
+}
 
+async function fetchCSVData() {
     function getDirectCsvUrl(url) {
         if (!url) return '';
         if (url.includes('docs.google.com/spreadsheets')) {
@@ -235,7 +237,8 @@ function processAndRenderData(dataToProcess, isFirstLoad = false) {
     // Agrupar por fecha
     const countsByDate = {};
     data.forEach(row => {
-        let raw = row.fecha || row.Fecha || '';
+        // Buscar columna de fecha de forma más robusta (fecha o date o Fecha)
+        let raw = row.fecha || row.date || row.Fecha || row.Date || '';
         let d = safeParseDate(raw);
         
         let formattedDate = 'Desconocida';
@@ -297,7 +300,7 @@ function filterData() {
     let end = endDateEl.value ? new Date(endDateEl.value + 'T23:59:59') : null;
 
     const filteredData = globalData.filter(row => {
-        let rawDate = row.fecha || row.Fecha;
+        let rawDate = row.fecha || row.date || row.Fecha || row.Date;
         if (!rawDate) return false;
         
         // Replicar logica de parseo seguro
@@ -443,8 +446,9 @@ function removeTypingIndicator() {
     if (indicator) indicator.remove();
 }
 
-if (chatForm) {
-    chatForm.addEventListener('submit', async (e) => {
+function setupEventListeners() {
+    if (chatForm) {
+        chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
         const message = chatInput.value.trim();
@@ -518,8 +522,11 @@ if (chatForm) {
 
 document.addEventListener('DOMContentLoaded', () => {
     // Solo inicia el dashboard config si estamos en una página que ocupa datos (grafico o chat)
-    if (document.getElementById('responsesChart') || document.getElementById('chat-history')) {
-        initializeDashboardConfig();
+    if (document.getElementById('responsesChart') || document.getElementById('chat-history') || document.getElementById('total-messages')) {
+        initializeDashboardConfig().then(() => {
+            fetchCSVData();
+            setupEventListeners();
+        });
     }
 });
 
