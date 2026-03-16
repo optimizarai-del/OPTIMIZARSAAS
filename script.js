@@ -45,7 +45,10 @@ async function initializeDashboardConfig() {
                 WEBHOOK_URL = client.webhookUrl || '';
                 currentUserId = client.id;
                 currentUserName = client.companyName || client.name;
-                
+
+                // Inicializar switches de acción (modo admin inspeccionando cliente)
+                initActionSwitches(client.actionButtons || []);
+
                 // Cambiar titulo
                 const titleElement = document.getElementById('dashboard-client-title');
                 if (titleElement) {
@@ -103,6 +106,8 @@ async function initializeDashboardConfig() {
             titleElement.textContent = `dashboard: ${currentUserName}`;
         }
 
+        // Inicializar switches de acción si el usuario tiene configurados
+        initActionSwitches(session.actionButtons || []);
         // Mostrar botones de enlaces externos
         const linksContainer = document.getElementById('dashboard-external-links');
         if (linksContainer) {
@@ -513,3 +518,97 @@ document.addEventListener('DOMContentLoaded', () => {
         initializeDashboardConfig();
     }
 });
+
+// ==========================================================================
+// Lógica de Action Buttons (Switches de Flujo n8n)
+// ==========================================================================
+
+async function initActionSwitches(actionButtons) {
+    const panel = document.getElementById('action-controls-panel');
+    const container = document.getElementById('action-switches-container');
+    if (!panel || !container || !actionButtons || actionButtons.length === 0) return;
+
+    panel.style.display = 'block';
+    container.innerHTML = '';
+
+    for (const btn of actionButtons) {
+        if (!btn.name || !btn.webhookUrl) continue;
+
+        const switchId = 'switch-' + btn.name.replace(/\s+/g, '-').toLowerCase();
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = 'display:flex;align-items:center;gap:14px;background:rgba(0,0,0,0.2);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 18px;min-width:220px;';
+        wrapper.innerHTML = `
+            <div style="flex:1;">
+                <p style="margin:0;font-size:0.85rem;font-weight:600;color:rgba(255,255,255,0.9);text-transform:lowercase;">${btn.name.toLowerCase()}</p>
+                <p id="${switchId}-status" style="margin:3px 0 0 0;font-size:0.72rem;color:#aaa;">consultando...</p>
+            </div>
+            <button id="${switchId}-btn" onclick="toggleActionSwitch('${switchId}', '${btn.webhookUrl}')"
+                style="position:relative;width:50px;height:26px;border-radius:13px;border:1px solid rgba(255,255,255,0.1);
+                       cursor:pointer;background:rgba(255,255,255,0.1);transition:background 0.3s ease;outline:none;flex-shrink:0;">
+                <span id="${switchId}-knob" style="position:absolute;top:3px;left:3px;width:20px;height:20px;
+                      border-radius:50%;background:#aaa;transition:transform 0.3s ease,background 0.3s ease;"></span>
+            </button>
+        `;
+        container.appendChild(wrapper);
+        fetchSwitchState(switchId, btn.webhookUrl);
+    }
+}
+
+async function fetchSwitchState(switchId, webhookUrl) {
+    try {
+        const res = await fetch(webhookUrl, { method: 'GET' });
+        if (!res.ok) throw new Error('Error del servidor');
+        const data = await res.json();
+        const isOn = data.emailEnabled ?? data.enabled ?? data.active ?? false;
+        updateSwitchUI(switchId, isOn);
+    } catch (err) {
+        const statusEl = document.getElementById(`${switchId}-status`);
+        if (statusEl) statusEl.textContent = 'sin conexión';
+    }
+}
+
+async function toggleActionSwitch(switchId, webhookUrl) {
+    const btnEl = document.getElementById(`${switchId}-btn`);
+    const statusEl = document.getElementById(`${switchId}-status`);
+    if (!btnEl) return;
+
+    btnEl.disabled = true;
+    if (statusEl) { statusEl.textContent = 'cambiando...'; statusEl.style.color = '#aaa'; }
+
+    try {
+        const res = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'toggle' })
+        });
+        if (!res.ok) throw new Error('Error del servidor');
+        const data = await res.json();
+        const isOn = data.emailEnabled ?? data.enabled ?? data.active ?? false;
+        updateSwitchUI(switchId, isOn);
+    } catch (err) {
+        if (statusEl) { statusEl.textContent = 'error al cambiar'; statusEl.style.color = '#f87171'; }
+    } finally {
+        btnEl.disabled = false;
+    }
+}
+
+function updateSwitchUI(switchId, isOn) {
+    const btnEl = document.getElementById(`${switchId}-btn`);
+    const knobEl = document.getElementById(`${switchId}-knob`);
+    const statusEl = document.getElementById(`${switchId}-status`);
+    if (!btnEl || !knobEl) return;
+
+    if (isOn) {
+        btnEl.style.background = 'rgba(52,211,153,0.35)';
+        btnEl.style.borderColor = '#34d399';
+        knobEl.style.transform = 'translateX(24px)';
+        knobEl.style.background = '#34d399';
+        if (statusEl) { statusEl.textContent = 'activo'; statusEl.style.color = '#34d399'; }
+    } else {
+        btnEl.style.background = 'rgba(248,113,113,0.2)';
+        btnEl.style.borderColor = '#f87171';
+        knobEl.style.transform = 'translateX(0)';
+        knobEl.style.background = '#f87171';
+        if (statusEl) { statusEl.textContent = 'desactivado'; statusEl.style.color = '#f87171'; }
+    }
+}

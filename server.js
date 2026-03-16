@@ -46,11 +46,16 @@ function initializeDatabase() {
         crmUrl TEXT,
         agenteExternoUrl TEXT,
         specialButtons TEXT,
+        actionButtons TEXT,
         requiresPasswordChange INTEGER DEFAULT 0,
         createdAt TEXT
     )`, (err) => {
         if (err) console.error("Error creating tables:", err.message);
-        else seedDefaultUsers();
+        else {
+            // Migración: agregar columna actionButtons si no existe (para DBs existentes)
+            db.run(`ALTER TABLE users ADD COLUMN actionButtons TEXT`, () => {});
+            seedDefaultUsers();
+        }
     });
 }
 
@@ -92,6 +97,7 @@ app.get('/api/users', (req, res) => {
             ...r,
             allowedPages: r.allowedPages ? JSON.parse(r.allowedPages) : [],
             specialButtons: r.specialButtons ? JSON.parse(r.specialButtons) : [],
+            actionButtons: r.actionButtons ? JSON.parse(r.actionButtons) : [],
             requiresPasswordChange: r.requiresPasswordChange === 1
         }));
         
@@ -118,6 +124,7 @@ app.post('/api/login', (req, res) => {
             crmUrl: user.crmUrl || '',
             agenteExternoUrl: user.agenteExternoUrl || '',
             specialButtons: user.specialButtons ? JSON.parse(user.specialButtons) : [],
+            actionButtons: user.actionButtons ? JSON.parse(user.actionButtons) : [],
             requiresPasswordChange: user.requiresPasswordChange === 1,
             loginTime: new Date().toISOString()
         };
@@ -137,14 +144,16 @@ app.post('/api/users', (req, res) => {
         if (existing) return res.status(400).json({ success: false, message: 'El correo ya está registrado.' });
         
         const q = `INSERT INTO users (id, name, email, password, role, allowedPages, companyName, 
-                   csvUrl, webhookUrl, crmUrl, agenteExternoUrl, specialButtons, requiresPasswordChange, createdAt) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                   csvUrl, webhookUrl, crmUrl, agenteExternoUrl, specialButtons, actionButtons, requiresPasswordChange, createdAt) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
                    
         const params = [
             id, user.name, user.email, user.password, user.role, 
             JSON.stringify(user.allowedPages || []), user.companyName || '',
             user.csvUrl || '', user.webhookUrl || '', user.crmUrl || '', user.agenteExternoUrl || '',
-            JSON.stringify(user.specialButtons || []), user.requiresPasswordChange ? 1 : 0,
+            JSON.stringify(user.specialButtons || []),
+            JSON.stringify(user.actionButtons || []),
+            user.requiresPasswordChange ? 1 : 0,
             new Date().toISOString()
         ];
         
@@ -169,7 +178,7 @@ app.put('/api/users/:id', (req, res) => {
         updateFields.push(`${key} = ?`);
         
         let value = updates[key];
-        if (key === 'allowedPages' || key === 'specialButtons') {
+        if (key === 'allowedPages' || key === 'specialButtons' || key === 'actionButtons') {
             value = JSON.stringify(value); 
         } else if (key === 'requiresPasswordChange') {
             value = value ? 1 : 0;

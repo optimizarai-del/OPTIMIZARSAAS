@@ -40,8 +40,9 @@ function openCreateUserModal(roleType) {
     document.getElementById('modal-title').textContent = roleType === 'admin' ? 'nuevo administrador' : 'nuevo cliente';
     document.getElementById('user-password').value = 'Optimizar123';
     
-    // Limpiar botones especiales
+    // Limpiar botones especiales y de acción
     document.getElementById('special-buttons-container').innerHTML = '';
+    document.getElementById('action-buttons-container').innerHTML = '';
     
     // Mostrar u ocultar campos específicos de clientes
     const clientFields = document.getElementById('client-specific-fields');
@@ -101,6 +102,17 @@ form.addEventListener('submit', async (e) => {
                 if(bName && bUrl) specialBtns.push({name: bName, url: bUrl});
             });
             updates.specialButtons = specialBtns;
+
+            // Recopilar botones de acción (switches n8n)
+            const actionBtns = [];
+            const actionContainer = document.getElementById('action-buttons-container');
+            const actionBlocks = actionContainer.querySelectorAll('.action-btn-block');
+            actionBlocks.forEach(b => {
+                const bName = b.querySelector('.ab-name').value;
+                const bUrl = b.querySelector('.ab-url').value;
+                if(bName && bUrl) actionBtns.push({name: bName, webhookUrl: bUrl});
+            });
+            updates.actionButtons = actionBtns;
         }
 
         await updateUser(id, updates);
@@ -127,6 +139,17 @@ form.addEventListener('submit', async (e) => {
                 if(bName && bUrl) specialBtns.push({name: bName, url: bUrl});
             });
             extraData.specialButtons = specialBtns;
+
+            // Recopilar botones de acción (switches n8n)
+            const actionBtns = [];
+            const actionContainer = document.getElementById('action-buttons-container');
+            const actionBlocks = actionContainer.querySelectorAll('.action-btn-block');
+            actionBlocks.forEach(b => {
+                const bName = b.querySelector('.ab-name').value;
+                const bUrl = b.querySelector('.ab-url').value;
+                if(bName && bUrl) actionBtns.push({name: bName, webhookUrl: bUrl});
+            });
+            extraData.actionButtons = actionBtns;
         }
 
         const res = await registerUser(name, email, password, roleType, allowedPages, extraData);
@@ -228,6 +251,13 @@ async function editUserRecord(userId) {
         if(user.specialButtons && user.specialButtons.length > 0) {
             user.specialButtons.forEach(btn => addSpecialButtonField(btn.name, btn.url));
         }
+
+        // Renderizar botones de acción existentes
+        const actionContainer = document.getElementById('action-buttons-container');
+        actionContainer.innerHTML = '';
+        if(user.actionButtons && user.actionButtons.length > 0) {
+            user.actionButtons.forEach(btn => addActionButtonField(btn.name, btn.webhookUrl));
+        }
     }
 }
 
@@ -244,6 +274,43 @@ if(btnAddSpecial) {
             alert('Solo se permiten hasta 4 botones especiales por cliente.');
         }
     });
+}
+
+// ==========================================================================
+// Botones de Acción (Switches n8n) Lógica
+// ==========================================================================
+const btnAddAction = document.getElementById('btn-add-action');
+if(btnAddAction) {
+    btnAddAction.addEventListener('click', () => {
+        const container = document.getElementById('action-buttons-container');
+        if (container.children.length < 6) {
+            addActionButtonField('', '');
+        } else {
+            alert('Solo se permiten hasta 6 botones de acción por cliente.');
+        }
+    });
+}
+
+function addActionButtonField(nameVal, webhookUrlVal) {
+    const container = document.getElementById('action-buttons-container');
+    if (container.children.length >= 6) return;
+
+    const div = document.createElement('div');
+    div.className = 'action-btn-block glass-container';
+    div.style.cssText = 'padding: 10px; margin-bottom: 10px; background: rgba(52,211,153,0.05); border: 1px solid rgba(52,211,153,0.2); border-radius: 8px; position: relative;';
+
+    div.innerHTML = `
+        <button type="button" onclick="this.parentElement.remove()" style="position: absolute; top: 5px; right: 5px; background: none; border: none; color: #f87171; cursor: pointer; font-size: 1.2rem; line-height: 1;">&times;</button>
+        <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+            <span style="color: #34d399; font-size: 0.8rem;">⚡</span>
+            <input type="text" class="glass-input ab-name" placeholder="Nombre del switch (ej. Envío de Mails)" value="${nameVal || ''}" style="padding: 5px 10px; font-size: 0.85rem;">
+        </div>
+        <div>
+            <input type="url" class="glass-input ab-url" placeholder="https://n8n.optimizar-ia.com/webhook/email-switch" value="${webhookUrlVal || ''}" style="padding: 5px 10px; font-size: 0.85rem; font-family: monospace;">
+        </div>
+        <p style="font-size: 0.7rem; color: rgba(52,211,153,0.7); margin-top: 5px; margin-bottom: 0;">URL del Webhook GET/POST del workflow switch en n8n</p>
+    `;
+    container.appendChild(div);
 }
 
 function addSpecialButtonField(nameVal, urlVal) {
