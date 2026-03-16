@@ -40,9 +40,10 @@ function openCreateUserModal(roleType) {
     document.getElementById('modal-title').textContent = roleType === 'admin' ? 'nuevo administrador' : 'nuevo cliente';
     document.getElementById('user-password').value = 'Optimizar123';
     
-    // Limpiar botones especiales y de acción
+    // Limpiar contenedores de inputs dinámicos
     document.getElementById('special-buttons-container').innerHTML = '';
     document.getElementById('action-buttons-container').innerHTML = '';
+    document.getElementById('custom-charts-container').innerHTML = '';
     
     // Mostrar u ocultar campos específicos de clientes
     const clientFields = document.getElementById('client-specific-fields');
@@ -113,6 +114,23 @@ form.addEventListener('submit', async (e) => {
                 if(bName && bUrl) actionBtns.push({name: bName, webhookUrl: bUrl});
             });
             updates.actionButtons = actionBtns;
+
+            // Recopilar gráficos personalizados
+            const customCharts = [];
+            const chartsContainer = document.getElementById('custom-charts-container');
+            chartsContainer.querySelectorAll('.custom-chart-block').forEach(b => {
+                customCharts.push({
+                    name:        b.querySelector('.cc-name').value.trim(),
+                    csvUrl:      b.querySelector('.cc-csv').value.trim(),
+                    dateColumn:  b.querySelector('.cc-date-col').value.trim(),
+                    valueColumn: b.querySelector('.cc-val-col').value.trim(),
+                    aggregation: b.querySelector('.cc-agg').value,
+                    metricLabel: b.querySelector('.cc-label').value.trim(),
+                    chartType:   b.querySelector('.cc-type').value,
+                    color:       b.querySelector('.cc-color').value
+                });
+            });
+            updates.customCharts = customCharts;
         }
 
         await updateUser(id, updates);
@@ -150,6 +168,23 @@ form.addEventListener('submit', async (e) => {
                 if(bName && bUrl) actionBtns.push({name: bName, webhookUrl: bUrl});
             });
             extraData.actionButtons = actionBtns;
+
+            // Recopilar gráficos personalizados
+            const customCharts = [];
+            const chartsContainer = document.getElementById('custom-charts-container');
+            chartsContainer.querySelectorAll('.custom-chart-block').forEach(b => {
+                customCharts.push({
+                    name:        b.querySelector('.cc-name').value.trim(),
+                    csvUrl:      b.querySelector('.cc-csv').value.trim(),
+                    dateColumn:  b.querySelector('.cc-date-col').value.trim(),
+                    valueColumn: b.querySelector('.cc-val-col').value.trim(),
+                    aggregation: b.querySelector('.cc-agg').value,
+                    metricLabel: b.querySelector('.cc-label').value.trim(),
+                    chartType:   b.querySelector('.cc-type').value,
+                    color:       b.querySelector('.cc-color').value
+                });
+            });
+            extraData.customCharts = customCharts;
         }
 
         const res = await registerUser(name, email, password, roleType, allowedPages, extraData);
@@ -252,11 +287,18 @@ async function editUserRecord(userId) {
             user.specialButtons.forEach(btn => addSpecialButtonField(btn.name, btn.url));
         }
 
-        // Renderizar botones de acción existentes
+        // Gráficos de acción existentes
         const actionContainer = document.getElementById('action-buttons-container');
         actionContainer.innerHTML = '';
         if(user.actionButtons && user.actionButtons.length > 0) {
             user.actionButtons.forEach(btn => addActionButtonField(btn.name, btn.webhookUrl));
+        }
+
+        // Gráficos personalizados existentes
+        const chartsContainer = document.getElementById('custom-charts-container');
+        chartsContainer.innerHTML = '';
+        if(user.customCharts && user.customCharts.length > 0) {
+            user.customCharts.forEach(chart => addCustomChartField(chart));
         }
     }
 }
@@ -755,4 +797,79 @@ function toggleDataset(index, element) {
     meta.hidden = meta.hidden === null ? !globalAdminChart.data.datasets[index].hidden : null;
     globalAdminChart.update();
     element.classList.toggle('hidden');
+}
+// ==========================================================================
+// Gráficos Personalizados — Lógica
+// ==========================================================================
+const btnAddChart = document.getElementById('btn-add-chart');
+if (btnAddChart) {
+    btnAddChart.addEventListener('click', () => {
+        const container = document.getElementById('custom-charts-container');
+        if (container.children.length < 8) {
+            addCustomChartField({});
+        } else {
+            alert('Máximo 8 gráficos personalizados por cliente.');
+        }
+    });
+}
+
+function addCustomChartField(cfg) {
+    cfg = cfg || {};
+    const container = document.getElementById('custom-charts-container');
+    if (container.children.length >= 8) return;
+    const div = document.createElement('div');
+    div.className = 'custom-chart-block';
+    div.style.cssText = 'padding:14px;margin-bottom:12px;background:rgba(167,139,250,0.05);border:1px solid rgba(167,139,250,0.2);border-radius:10px;position:relative;';
+    const agg = cfg.aggregation || 'count';
+    const ctype = cfg.chartType || 'line';
+    const color = cfg.color || '#a78bfa';
+    div.innerHTML = `
+        <button type="button" onclick="this.parentElement.remove()" style="position:absolute;top:8px;right:8px;background:none;border:none;color:#f87171;cursor:pointer;font-size:1.1rem;line-height:1;">&times;</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div>
+                <label style="font-size:0.72rem;color:rgba(167,139,250,0.9);display:block;margin-bottom:3px;">nombre del gráfico *</label>
+                <input type="text" class="glass-input cc-name" placeholder="ej: Cargas de Combustible" value="${cfg.name||''}" style="padding:6px 10px;font-size:0.82rem;width:100%;box-sizing:border-box;">
+            </div>
+            <div>
+                <label style="font-size:0.72rem;color:rgba(167,139,250,0.9);display:block;margin-bottom:3px;">etiqueta de la métrica *</label>
+                <input type="text" class="glass-input cc-label" placeholder="ej: litros, reportes, ventas" value="${cfg.metricLabel||''}" style="padding:6px 10px;font-size:0.82rem;width:100%;box-sizing:border-box;">
+            </div>
+        </div>
+        <div style="margin-bottom:8px;">
+            <label style="font-size:0.72rem;color:rgba(167,139,250,0.9);display:block;margin-bottom:3px;">url google sheets (csv público) *</label>
+            <input type="url" class="glass-input cc-csv" placeholder="https://docs.google.com/spreadsheets/.../pub?output=csv" value="${cfg.csvUrl||''}" style="padding:6px 10px;font-size:0.78rem;font-family:monospace;width:100%;box-sizing:border-box;">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div>
+                <label style="font-size:0.72rem;color:rgba(167,139,250,0.9);display:block;margin-bottom:3px;">columna de fecha *</label>
+                <input type="text" class="glass-input cc-date-col" placeholder="ej: fecha, Fecha, Date" value="${cfg.dateColumn||''}" style="padding:6px 10px;font-size:0.82rem;width:100%;box-sizing:border-box;">
+            </div>
+            <div>
+                <label style="font-size:0.72rem;color:rgba(167,139,250,0.9);display:block;margin-bottom:3px;">columna de valor (o COUNT)</label>
+                <input type="text" class="glass-input cc-val-col" placeholder="ej: litros, monto — o COUNT" value="${cfg.valueColumn||'COUNT'}" style="padding:6px 10px;font-size:0.82rem;width:100%;box-sizing:border-box;">
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 80px;gap:8px;">
+            <div>
+                <label style="font-size:0.72rem;color:rgba(167,139,250,0.9);display:block;margin-bottom:3px;">agregación</label>
+                <select class="glass-input cc-agg" style="padding:6px 10px;font-size:0.82rem;width:100%;background:rgba(0,0,0,0.3);cursor:pointer;">
+                    <option value="count" ${agg==='count'?'selected':''}>count (contar filas)</option>
+                    <option value="sum"   ${agg==='sum'  ?'selected':''}>sum (sumar valores)</option>
+                    <option value="avg"   ${agg==='avg'  ?'selected':''}>avg (promedio)</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.72rem;color:rgba(167,139,250,0.9);display:block;margin-bottom:3px;">tipo de gráfico</label>
+                <select class="glass-input cc-type" style="padding:6px 10px;font-size:0.82rem;width:100%;background:rgba(0,0,0,0.3);cursor:pointer;">
+                    <option value="line" ${ctype==='line'?'selected':''}>lineas</option>
+                    <option value="bar"  ${ctype==='bar' ?'selected':''}>barras</option>
+                </select>
+            </div>
+            <div>
+                <label style="font-size:0.72rem;color:rgba(167,139,250,0.9);display:block;margin-bottom:3px;">color</label>
+                <input type="color" class="cc-color" value="${color}" style="width:100%;height:36px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:none;cursor:pointer;padding:2px;">
+            </div>
+        </div>
+    `;
+    container.appendChild(div);
 }

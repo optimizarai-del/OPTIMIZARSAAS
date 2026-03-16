@@ -233,6 +233,20 @@
                     </div>
                 </div>
 
+                    <!-- 📊 Gráficos Personalizados -->
+                    <div class="form-group" style="margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <div>
+                                <label class="input-label" style="margin: 0; color: #a78bfa;">&#128202; gráficos personalizados</label>
+                                <p style="font-size: 0.72rem; color: #aaa; margin: 4px 0 0 0;">Gráficos que aparecen en el dashboard del cliente con sus propios datos.</p>
+                            </div>
+                            <button type="button" class="btn-optimizar" id="btn-add-chart" style="padding: 4px 10px; font-size: 0.75rem; background: rgba(167, 139, 250, 0.15); border-color: #a78bfa;">+ agregar gráfico</button>
+                        </div>
+                        <div id="custom-charts-container">
+                            <!-- Los bloques de configuración se generan por JS -->
+                        </div>
+                    </div>
+
                 <div style="display: flex; gap: 10px; margin-top: 20px;">
                     <button type="button" onclick="closeUserModal()" class="btn-optimizar" style="background: rgba(255,255,255,0.05); border-color: transparent;">cancelar</button>
                     <button type="submit" class="btn-optimizar" style="flex:1;">guardar registro</button>

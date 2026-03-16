@@ -48,6 +48,8 @@ async function initializeDashboardConfig() {
 
                 // Inicializar switches de acción (modo admin inspeccionando cliente)
                 initActionSwitches(client.actionButtons || []);
+                // Inicializar gráficos personalizados
+                initCustomCharts(client.customCharts || []);
 
                 // Cambiar titulo
                 const titleElement = document.getElementById('dashboard-client-title');
@@ -108,6 +110,8 @@ async function initializeDashboardConfig() {
 
         // Inicializar switches de acción si el usuario tiene configurados
         initActionSwitches(session.actionButtons || []);
+        // Inicializar gráficos personalizados
+        initCustomCharts(session.customCharts || []);
         // Mostrar botones de enlaces externos
         const linksContainer = document.getElementById('dashboard-external-links');
         if (linksContainer) {
@@ -611,4 +615,199 @@ function updateSwitchUI(switchId, isOn) {
         knobEl.style.background = '#f87171';
         if (statusEl) { statusEl.textContent = 'desactivado'; statusEl.style.color = '#f87171'; }
     }
+}
+
+// ==========================================================================
+// Gráficos Personalizados del Cliente — Renderizado
+// ==========================================================================
+
+function getDirectCsvUrlCustom(url) {
+    if (!url) return '';
+    if (url.includes('docs.google.com/spreadsheets')) {
+        if (url.includes('/pubhtml')) return url.replace(/\/pubhtml.*$/, '/pub?output=csv');
+        if (url.includes('/edit') || url.includes('/view')) return url.replace(/\/(edit|view).*$/, '/export?format=csv');
+    }
+    return url;
+}
+
+function initCustomCharts(customCharts) {
+    const section = document.getElementById('custom-charts-section');
+    const grid = document.getElementById('custom-charts-grid');
+    if (!section || !grid || !customCharts || customCharts.length === 0) return;
+
+    section.style.display = 'block';
+    grid.innerHTML = '';
+
+    customCharts.forEach(function(cfg, idx) {
+        if (!cfg.name || !cfg.csvUrl) return;
+
+        var canvasId = 'custom-chart-canvas-' + idx;
+        var card = document.createElement('div');
+        card.className = 'glass-container';
+        card.style.cssText = 'padding: 18px;';
+        card.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h4 style="margin:0;font-size:0.88rem;font-weight:600;color:rgba(255,255,255,0.95);text-transform:lowercase;">${cfg.name.toLowerCase()}</h4>
+                <span id="badge-${idx}" style="font-size:0.7rem;background:rgba(167,139,250,0.15);color:#a78bfa;padding:2px 8px;border-radius:20px;border:1px solid rgba(167,139,250,0.3);">cargando...</span>
+            </div>
+            <div style="position:relative;height:220px;width:100%;">
+                <canvas id="${canvasId}"></canvas>
+            </div>
+            <p id="err-${idx}" style="font-size:0.75rem;color:#f87171;margin:8px 0 0 0;display:none;"></p>
+        `;
+        grid.appendChild(card);
+
+        fetchAndRenderCustomChart(cfg, canvasId, idx);
+    });
+}
+
+function fetchAndRenderCustomChart(cfg, canvasId, idx) {
+    var url = getDirectCsvUrlCustom(cfg.csvUrl);
+    var badgeEl = document.getElementById('badge-' + idx);
+    var errEl = document.getElementById('err-' + idx);
+
+    Papa.parse(url, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+            try {
+                var rows = results.data.map(function(row) {
+                    var nr = {};
+                    for (var k in row) nr[k.toLowerCase().trim()] = row[k];
+                    return nr;
+                });
+
+                var dateKey = (cfg.dateColumn || 'fecha').toLowerCase().trim();
+                var valKey  = (cfg.valueColumn || 'COUNT').toLowerCase().trim();
+                var agg     = cfg.aggregation || 'count';
+                var isCount = valKey === 'count';
+
+                // Agrupar por fecha
+                var grouped = {}; // { dateStr: { sum, count } }
+                rows.forEach(function(row) {
+                    var raw = row[dateKey];
+                    if (!raw) return;
+                    var d = safeParseCustomDate(raw);
+                    if (!d) return;
+                    var key = d.toISOString().split('T')[0];
+                    if (!grouped[key]) grouped[key] = { sum: 0, count: 0 };
+                    grouped[key].count++;
+                    if (!isCount) {
+                        var num = parseFloat(String(row[valKey] || '0').replace(',', '.'));
+                        if (!isNaN(num)) grouped[key].sum += num;
+                    }
+                });
+
+                var sortedDates = Object.keys(grouped).sort(function(a,b){ return new Date(a)-new Date(b); });
+                if (sortedDates.length === 0) {
+                    showCustomChartError(idx, 'No se encontraron datos con la columna "' + cfg.dateColumn + '"');
+                    return;
+                }
+
+                var labels = sortedDates.map(function(d) {
+                    var p = d.split('-');
+                    return p[2]+'/'+p[1]+'/'+p[0];
+                });
+
+                var data = sortedDates.map(function(k) {
+                    if (agg === 'sum')   return grouped[k].sum;
+                    if (agg === 'avg')   return grouped[k].count > 0 ? +(grouped[k].sum / grouped[k].count).toFixed(2) : 0;
+                    return grouped[k].count; // count (default)
+                });
+
+                var total = data.reduce(function(a,b){ return a+b; }, 0);
+                var display = agg === 'count' ? total + ' total' : total.toFixed(2) + ' ' + (cfg.metricLabel || '');
+                if (badgeEl) { badgeEl.textContent = display; }
+
+                renderCustomChart(canvasId, labels, data, cfg);
+            } catch(e) {
+                showCustomChartError(idx, 'Error procesando datos: ' + e.message);
+            }
+        },
+        error: function(err) {
+            showCustomChartError(idx, 'No se pudo cargar el CSV. Verificá que sea público.');
+        }
+    });
+}
+
+function safeParseCustomDate(raw) {
+    if (!raw) return null;
+    var str = String(raw).trim().split(' ')[0].split('T')[0];
+    var ps = str.split('/');
+    var pd = str.split('-');
+    var d;
+    if (ps.length === 3) d = new Date(ps[2]+'-'+ps[1]+'-'+ps[0]+'T12:00:00');
+    else if (pd.length === 3 && pd[0].length === 2) d = new Date(pd[2]+'-'+pd[1]+'-'+pd[0]+'T12:00:00');
+    else { d = new Date(str+'T12:00:00'); if (isNaN(d)) d = new Date(str); }
+    return isNaN(d) ? null : d;
+}
+
+function showCustomChartError(idx, msg) {
+    var badgeEl = document.getElementById('badge-' + idx);
+    var errEl = document.getElementById('err-' + idx);
+    if (badgeEl) { badgeEl.textContent = 'error'; badgeEl.style.color = '#f87171'; badgeEl.style.borderColor = 'rgba(248,113,113,0.3)'; badgeEl.style.background = 'rgba(248,113,113,0.1)'; }
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+}
+
+function renderCustomChart(canvasId, labels, data, cfg) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var color = cfg.color || '#a78bfa';
+    var isBar = cfg.chartType === 'bar';
+
+    var gradBg;
+    if (!isBar) {
+        gradBg = ctx.createLinearGradient(0, 0, 0, 220);
+        gradBg.addColorStop(0, color.replace(')', ', 0.35)').replace('rgb', 'rgba'));
+        gradBg.addColorStop(1, color.replace(')', ', 0.0)').replace('rgb', 'rgba'));
+    } else {
+        gradBg = color;
+    }
+
+    Chart.defaults.color = 'rgba(255,255,255,0.6)';
+    Chart.defaults.font.family = "'Poppins', sans-serif";
+
+    new Chart(ctx, {
+        type: cfg.chartType || 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: cfg.metricLabel || cfg.name,
+                data: data,
+                borderColor: color,
+                backgroundColor: isBar ? color + '88' : gradBg,
+                borderWidth: isBar ? 0 : 2.5,
+                pointBackgroundColor: color,
+                pointRadius: isBar ? 0 : 3,
+                fill: !isBar,
+                tension: 0.4,
+                borderRadius: isBar ? 4 : 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15,23,42,0.95)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: color,
+                    borderWidth: 1,
+                    padding: 8,
+                    displayColors: false,
+                    callbacks: {
+                        label: function(ctx) { return ctx.parsed.y + ' ' + (cfg.metricLabel || ''); }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { maxTicksLimit: 8, font: { size: 10 } } },
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 10 } } }
+            }
+        }
+    });
 }

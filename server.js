@@ -47,13 +47,15 @@ function initializeDatabase() {
         agenteExternoUrl TEXT,
         specialButtons TEXT,
         actionButtons TEXT,
+        customCharts TEXT,
         requiresPasswordChange INTEGER DEFAULT 0,
         createdAt TEXT
     )`, (err) => {
         if (err) console.error("Error creating tables:", err.message);
         else {
-            // Migración: agregar columna actionButtons si no existe (para DBs existentes)
+            // Migraciones para columnas nuevas (no rompe DBs existentes)
             db.run(`ALTER TABLE users ADD COLUMN actionButtons TEXT`, () => {});
+            db.run(`ALTER TABLE users ADD COLUMN customCharts TEXT`, () => {});
             seedDefaultUsers();
         }
     });
@@ -98,6 +100,7 @@ app.get('/api/users', (req, res) => {
             allowedPages: r.allowedPages ? JSON.parse(r.allowedPages) : [],
             specialButtons: r.specialButtons ? JSON.parse(r.specialButtons) : [],
             actionButtons: r.actionButtons ? JSON.parse(r.actionButtons) : [],
+            customCharts: r.customCharts ? JSON.parse(r.customCharts) : [],
             requiresPasswordChange: r.requiresPasswordChange === 1
         }));
         
@@ -125,6 +128,7 @@ app.post('/api/login', (req, res) => {
             agenteExternoUrl: user.agenteExternoUrl || '',
             specialButtons: user.specialButtons ? JSON.parse(user.specialButtons) : [],
             actionButtons: user.actionButtons ? JSON.parse(user.actionButtons) : [],
+            customCharts: user.customCharts ? JSON.parse(user.customCharts) : [],
             requiresPasswordChange: user.requiresPasswordChange === 1,
             loginTime: new Date().toISOString()
         };
@@ -144,8 +148,8 @@ app.post('/api/users', (req, res) => {
         if (existing) return res.status(400).json({ success: false, message: 'El correo ya está registrado.' });
         
         const q = `INSERT INTO users (id, name, email, password, role, allowedPages, companyName, 
-                   csvUrl, webhookUrl, crmUrl, agenteExternoUrl, specialButtons, actionButtons, requiresPasswordChange, createdAt) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+                   csvUrl, webhookUrl, crmUrl, agenteExternoUrl, specialButtons, actionButtons, customCharts, requiresPasswordChange, createdAt) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
                    
         const params = [
             id, user.name, user.email, user.password, user.role, 
@@ -153,6 +157,7 @@ app.post('/api/users', (req, res) => {
             user.csvUrl || '', user.webhookUrl || '', user.crmUrl || '', user.agenteExternoUrl || '',
             JSON.stringify(user.specialButtons || []),
             JSON.stringify(user.actionButtons || []),
+            JSON.stringify(user.customCharts || []),
             user.requiresPasswordChange ? 1 : 0,
             new Date().toISOString()
         ];
@@ -178,7 +183,7 @@ app.put('/api/users/:id', (req, res) => {
         updateFields.push(`${key} = ?`);
         
         let value = updates[key];
-        if (key === 'allowedPages' || key === 'specialButtons' || key === 'actionButtons') {
+        if (key === 'allowedPages' || key === 'specialButtons' || key === 'actionButtons' || key === 'customCharts') {
             value = JSON.stringify(value); 
         } else if (key === 'requiresPasswordChange') {
             value = value ? 1 : 0;
