@@ -37,8 +37,9 @@ async function initializeDashboardConfig() {
     // MODO ADMIN: Viendo el dashboard de un cliente en particular
     if (session.role === 'admin') {
         if (inspectClientId) {
-            const users = typeof getAllUsers === 'function' ? getAllUsers() : [];
-            const client = users.find(u => u.id === inspectClientId);
+            console.log("Admin detectado, buscando cliente:", inspectClientId);
+            const users = typeof getAllUsers === 'function' ? await getAllUsers() : [];
+            const client = users.find(u => String(u.id) === String(inspectClientId));
             
             if (client) {
                 CSV_URL = client.csvUrl || '';
@@ -146,14 +147,22 @@ async function initializeDashboardConfig() {
 async function fetchCSVData() {
     function getDirectCsvUrl(url) {
         if (!url) return '';
-        if (url.includes('docs.google.com/spreadsheets')) {
-            if (url.includes('/pubhtml')) {
-                return url.replace(/\/pubhtml.*$/, '/pub?output=csv');
-            } else if (url.includes('/edit') || url.includes('/view')) {
-                return url.replace(/\/(edit|view).*$/, '/export?format=csv');
+        let cleanUrl = url.trim();
+        if (cleanUrl.includes('docs.google.com/spreadsheets')) {
+            // Caso: enlace de publicación (tradicional o nuevo formato)
+            if (cleanUrl.includes('/pubhtml') || cleanUrl.includes('/pub?')) {
+                // Si ya tiene /pub pero no tiene output=csv, lo forzamos
+                if (cleanUrl.includes('/pub?') && !cleanUrl.includes('output=csv')) {
+                    return cleanUrl.split('?')[0] + '?output=csv';
+                }
+                return cleanUrl.replace(/\/pubhtml.*$/, '/pub?output=csv');
+            } 
+            // Caso: enlace de edición/vista
+            else if (cleanUrl.includes('/edit') || cleanUrl.includes('/view')) {
+                return cleanUrl.replace(/\/(edit|view).*$/, '/export?format=csv');
             }
         }
-        return url;
+        return cleanUrl;
     }
 
     if (!CSV_URL) {
@@ -161,11 +170,15 @@ async function fetchCSVData() {
         globalData = generateMockData();
         processAndRenderData(globalData);
     } else {
-        Papa.parse(getDirectCsvUrl(CSV_URL), {
+        const finalUrl = getDirectCsvUrl(CSV_URL);
+        console.log("Cargando CSV desde:", finalUrl);
+        
+        Papa.parse(finalUrl, {
             download: true,
             header: true,
             skipEmptyLines: true,
             complete: function(results) {
+                console.log("CSV cargado exitosamente. Filas detectadas:", results.data.length);
                 // Normalize case for headers (convert all keys to lowercase to be safe)
                 globalData = results.data.map(row => {
                     const normalized = {};
@@ -237,8 +250,8 @@ function processAndRenderData(dataToProcess, isFirstLoad = false) {
     // Agrupar por fecha
     const countsByDate = {};
     data.forEach(row => {
-        // Buscar columna de fecha de forma más robusta (fecha o date o Fecha)
-        let raw = row.fecha || row.date || row.Fecha || row.Date || '';
+        // Los encabezados ya están normalizados a minúsculas en fetchCSVData (normalized[key.toLowerCase().trim()])
+        let raw = row.fecha || row.date || '';
         let d = safeParseDate(raw);
         
         let formattedDate = 'Desconocida';
