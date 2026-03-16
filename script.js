@@ -142,6 +142,31 @@ async function initializeDashboardConfig() {
             WEBHOOK_URL = session.webhookUrl || '';
             currentUserId = session.userId;
             currentUserName = session.companyName || session.name;
+
+            // Inicializar todos los componentes del dashboard con datos de sesión
+            const titleElement = document.getElementById('dashboard-client-title');
+            if (titleElement) titleElement.textContent = `dashboard: ${currentUserName}`;
+
+            initActionSwitches(session.actionButtons || []);
+            initCustomCharts(session.customCharts || []);
+
+            const linksContainer = document.getElementById('dashboard-external-links');
+            if (linksContainer) {
+                linksContainer.innerHTML = '';
+                if (session.agenteExternoUrl) {
+                    linksContainer.innerHTML += `<a href="${session.agenteExternoUrl}" target="_blank" class="btn-optimizar" style="padding: 6px 15px; font-size: 0.85rem; background: rgba(56, 189, 248, 0.2); border-color: var(--accent-blue);">chat externo</a>`;
+                }
+                if (session.crmUrl) {
+                    linksContainer.innerHTML += `<a href="${session.crmUrl}" target="_blank" class="btn-optimizar" style="padding: 6px 15px; font-size: 0.85rem; background: rgba(124, 58, 237, 0.2); border-color: rgba(124, 58, 237, 0.5);">abrir crm</a>`;
+                }
+                if (session.specialButtons && session.specialButtons.length > 0) {
+                    session.specialButtons.forEach(btn => {
+                        if (btn.name && btn.url) {
+                            linksContainer.innerHTML += `<a href="${btn.url}" target="_blank" class="btn-optimizar" style="padding: 6px 15px; font-size: 0.85rem; background: rgba(244, 114, 182, 0.2); border-color: var(--accent-pink);">${btn.name.toLowerCase()}</a>`;
+                        }
+                    });
+                }
+            }
         }
     }
 }
@@ -779,6 +804,13 @@ function showCustomChartError(idx, msg) {
     if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
 }
 
+function hexToRgba(hex, alpha) {
+    var r = parseInt(hex.slice(1, 3), 16);
+    var g = parseInt(hex.slice(3, 5), 16);
+    var b = parseInt(hex.slice(5, 7), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
+
 function renderCustomChart(canvasId, labels, data, cfg) {
     var canvas = document.getElementById(canvasId);
     if (!canvas) return;
@@ -789,8 +821,10 @@ function renderCustomChart(canvasId, labels, data, cfg) {
     var gradBg;
     if (!isBar) {
         gradBg = ctx.createLinearGradient(0, 0, 0, 220);
-        gradBg.addColorStop(0, color.replace(')', ', 0.35)').replace('rgb', 'rgba'));
-        gradBg.addColorStop(1, color.replace(')', ', 0.0)').replace('rgb', 'rgba'));
+        var colorStart = color.startsWith('#') ? hexToRgba(color, 0.35) : color.replace(')', ', 0.35)').replace('rgb', 'rgba');
+        var colorEnd = color.startsWith('#') ? hexToRgba(color, 0.0) : color.replace(')', ', 0.0)').replace('rgb', 'rgba');
+        gradBg.addColorStop(0, colorStart);
+        gradBg.addColorStop(1, colorEnd);
     } else {
         gradBg = color;
     }

@@ -127,6 +127,14 @@ async function updateUser(userId, updates) {
                 if(updates.name) session.name = updates.name;
                 if(updates.email) session.email = updates.email;
                 if('requiresPasswordChange' in updates) session.requiresPasswordChange = updates.requiresPasswordChange;
+                if(updates.companyName !== undefined) session.companyName = updates.companyName;
+                if(updates.csvUrl !== undefined) session.csvUrl = updates.csvUrl;
+                if(updates.webhookUrl !== undefined) session.webhookUrl = updates.webhookUrl;
+                if(updates.crmUrl !== undefined) session.crmUrl = updates.crmUrl;
+                if(updates.agenteExternoUrl !== undefined) session.agenteExternoUrl = updates.agenteExternoUrl;
+                if(updates.specialButtons !== undefined) session.specialButtons = updates.specialButtons;
+                if(updates.actionButtons !== undefined) session.actionButtons = updates.actionButtons;
+                if(updates.customCharts !== undefined) session.customCharts = updates.customCharts;
                 localStorage.setItem(SESSION_KEY, JSON.stringify(session));
             }
             return true;
