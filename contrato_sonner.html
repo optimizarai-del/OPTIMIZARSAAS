@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>optimizar — contrato sonner</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* — Variables — */
+    :root {
+      --font-family: 'Poppins', sans-serif;
+      --text-primary: #FFFFFF;
+      --text-secondary: rgba(255,255,255,0.8);
+      --accent-pink: #f472b6;
+      --accent-blue: #38bdf8;
+      --accent-green: #34d399;
+      --accent-amber: #fbbf24;
+      --glass-bg: rgba(255,255,255,0.08);
+      --glass-border: 1.5px solid rgba(255,255,255,0.25);
+      --glass-radius: 16px;
+      --glass-shadow: 0 8px 32px 0 rgba(31,38,135,0.37);
+      --glass-blur: blur(12px);
+      --danger: #f87171;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: var(--font-family);
+      color: var(--text-primary);
+      background: linear-gradient(125deg, #c044e0 0%, #a855f7 20%, #7c3aed 40%, #6366f1 60%, #4f86f7 80%, #38bdf8 100%);
+      background-attachment: fixed;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    /* — Nav — */
+    .top-nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 30px;
+      padding: 15px 30px;
+      background: var(--glass-bg);
+      border: var(--glass-border);
+      border-radius: var(--glass-radius);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      box-shadow: var(--glass-shadow);
+    }
+    .logo-area { display: flex; align-items: center; gap: 12px; }
+    .brand-title {
+      font-weight: 800;
+      font-size: 1.8rem;
+      text-transform: lowercase;
+      letter-spacing: -1px;
+    }
+    .brand-sub {
+      font-size: 0.75rem;
+      color: var(--accent-pink);
+      font-weight: 600;
+      text-transform: lowercase;
+      letter-spacing: 0.05em;
+    }
+    .brand-icon { color: var(--accent-blue); }
+
+    /* — Contenedor principal — */
+    .form-wrapper {
+      max-width: 820px;
+      margin: 0 auto;
+    }
+
+    /* — Card glassmorphism — */
+    .glass-card {
+      background: var(--glass-bg);
+      border: var(--glass-border);
+      border-radius: var(--glass-radius);
+      backdrop-filter: var(--glass-blur);
+      -webkit-backdrop-filter: var(--glass-blur);
+      box-shadow: var(--glass-shadow);
+      padding: 32px;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      text-transform: lowercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title::before {
+      content: '';
+      display: inline-block;
+      width: 3px;
+      height: 14px;
+      background: var(--accent-blue);
+      border-radius: 2px;
+    }
+
+    /* — Grid de campos — */
+    .fields-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .fields-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .fields-grid.cols-1 { grid-template-columns: 1fr; }
+    .field-full { grid-column: 1 / -1; }
+
+    /* — Campo individual — */
+    .field-group { display: flex; flex-direction: column; gap: 6px; }
+
+    label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--accent-blue);
+      text-transform: lowercase;
+      letter-spacing: 0.03em;
+    }
+
+    .glass-input {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
+      padding: 11px 14px;
+      color: white;
+      font-family: var(--font-family);
+      font-size: 0.9rem;
+      outline: none;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    .glass-input:focus {
+      border-color: var(--accent-blue);
+      background: rgba(255,255,255,0.15);
+      box-shadow: 0 0 0 3px rgba(56,189,248,0.15);
+    }
+    .glass-input::placeholder { color: rgba(255,255,255,0.35); }
+    input[type="date"].glass-input,
+    input[type="time"].glass-input,
+    input[type="number"].glass-input { cursor: pointer; }
+    ::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+
+    /* Prefijo de moneda */
+    .input-prefix-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .input-prefix {
+      position: absolute;
+      left: 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--accent-green);
+      pointer-events: none;
+    }
+    .input-prefix-wrap .glass-input { padding-left: 28px; }
+
+    /* — Highlight de totales — */
+    .highlight-input .glass-input {
+      border-color: rgba(52,211,153,0.4);
+      background: rgba(52,211,153,0.08);
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    .highlight-input .glass-input:focus {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 0 3px rgba(52,211,153,0.15);
+    }
+
+    /* — Separador de firma — */
+    .firma-section {
+      background: rgba(244,114,182,0.05);
+      border: 1px solid rgba(244,114,182,0.2);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .firma-section .section-title::before { background: var(--accent-pink); }
+    .firma-section .section-title { color: var(--accent-pink); }
+    .firma-section label { color: var(--accent-pink); }
+    .firma-section .glass-input:focus {
+      border-color: var(--accent-pink);
+      box-shadow: 0 0 0 3px rgba(244,114,182,0.15);
+    }
+
+    /* — Botones — */
+    .actions-row {
+      display: flex;
+      gap: 14px;
+      justify-content: flex-end;
+      margin-top: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      font-family: var(--font-family);
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-transform: lowercase;
+      padding: 13px 32px;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 1px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.1);
+      color: white;
+    }
+    .btn:hover { background: rgba(255,255,255,0.2); transform: translateY(-2px); }
+
+    .btn-enviar {
+      background: rgba(52,211,153,0.25);
+      border-color: var(--accent-green);
+      padding: 13px 48px;
+      font-size: 1rem;
+      box-shadow: 0 0 20px rgba(52,211,153,0.2);
+    }
+    .btn-enviar:hover {
+      background: rgba(52,211,153,0.4);
+      box-shadow: 0 0 35px rgba(52,211,153,0.4);
+      transform: translateY(-2px);
+    }
+    .btn-enviar:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-reset {
+      background: rgba(248,113,113,0.1);
+      border-color: rgba(248,113,113,0.4);
+    }
+    .btn-reset:hover { background: rgba(248,113,113,0.25); }
+
+    /* — Estado de envío — */
+    .status-bar {
+      padding: 14px 20px;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-align: center;
+      display: none;
+      margin-top: 16px;
+      animation: fadeIn 0.3s ease;
+    }
+    .status-bar.success {
+      background: rgba(52,211,153,0.15);
+      border: 1px solid rgba(52,211,153,0.4);
+      color: #6ee7b7;
+      display: block;
+    }
+    .status-bar.error {
+      background: rgba(248,113,113,0.15);
+      border: 1px solid rgba(248,113,113,0.4);
+      color: #fca5a5;
+      display: block;
+    }
+    .status-bar.loading {
+      background: rgba(56,189,248,0.12);
+      border: 1px solid rgba(56,189,248,0.3);
+      color: #7dd3fc;
+      display: block;
+    }
+
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+    /* — Decoración de header — */
+    .form-header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .form-header h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-transform: lowercase;
+      letter-spacing: -0.5px;
+    }
+    .form-header p {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* — Responsive — */
+    @media (max-width: 680px) {
+      body { padding: 10px; }
+      .fields-grid { grid-template-columns: 1fr; }
+      .fields-grid.cols-3 { grid-template-columns: 1fr 1fr; }
+      .top-nav { flex-direction: column; gap: 10px; padding: 14px; }
+      .glass-card { padding: 20px; }
+      .actions-row { justify-content: stretch; }
+      .btn-enviar { width: 100%; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<header class="top-nav">
+  <div class="logo-area">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 90" width="36" height="36"
+      fill="none" stroke="currentColor" stroke-width="7"
+      stroke-linecap="round" stroke-linejoin="round" class="brand-icon">
+      <path d="M 20 45 v 20 h 20 v -35"/>
+      <circle cx="20" cy="38" r="6"/>
+      <circle cx="40" cy="24" r="6"/>
+      <path d="M 40 50 l 30 -30"/>
+      <path d="M 65 55 l -15 -15"/>
+      <circle cx="65" cy="62" r="6"/>
+      <path d="M 50 20 h 20 v 20"/>
+    </svg>
+    <div>
+      <h1 class="brand-title">optimizar</h1>
+      <span class="brand-sub">contrato sonner</span>
+    </div>
+  </div>
+  <a href="admin.html" class="btn" style="padding:8px 20px;font-size:0.85rem;text-decoration:none;">← panel admin</a>
+</header>
+
+<!-- FORMULARIO -->
+<div class="form-wrapper">
+
+  <div class="form-header">
+    <h2>📋 nuevo contrato de prestación</h2>
+    <p>completá los datos del prestatario y del evento para generar el contrato</p>
+  </div>
+
+  <form id="contrato-form" novalidate>
+
+    <!-- — DATOS DEL PRESTATARIO — -->
+    <div class="glass-card">
+      <div class="section-title">datos del prestatario</div>
+      <div class="fields-grid">
+
+        <div class="field-group field-full">
+          <label for="nombre_prestatario">nombre completo del prestatario</label>
+          <input type="text" id="nombre_prestatario" name="nombre_prestatario"
+            class="glass-input" placeholder="Apellido, Nombre Completo" required>
+        </div>
+
+        <div class="field-group">
+          <label for="DNI_prestatario">DNI del prestatario</label>
+          <input type="text" id="DNI_prestatario" name="DNI_prestatario"
+            class="glass-input" placeholder="XX.XXX.XXX" required>
+        </div>
+
+        <div class="field-group">
+          <label for="domicilio_prestatario">domicilio del prestatario</label>
+          <input type="text" id="domicilio_prestatario" name="domicilio_prestatario"
+            class="glass-input" placeholder="Calle, número, ciudad" required>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- — DATOS DEL EVENTO — -->
+    <div class="glass-card">
+      <div class="section-title">datos del evento</div>
+      <div class="fields-grid">
+
+        <div class="field-group field-full">
+          <label for="lugar_evento">lugar del evento</label>
+          <input type="text" id="lugar_evento" name="lugar_evento"
+            class="glass-input" placeholder="Salón / Dirección completa del evento" required>
+        </div>
+
+        <div class="field-group">
+          <label for="dia_evento">día del evento</label>
+          <input type="date" id="dia_evento" name="dia_evento"
+            class="glass-input" required>
+        </div>
+
+        <div class="field-group">
+          <label for="dias_para_pagar">días para pagar</label>
+          <input type="number" id="dias_para_pagar" name="dias_para_pagar"
+            class="glass-input" placeholder="ej: 30" min="1" required>
+        </div>
+
+        <div class="field-group">
+          <label for="hora_inicio">hora de inicio</label>
+          <input type="time" id="hora_inicio" name="hora_inicio"
+            class="glass-input" required>
+        </div>
+
+        <div class="field-group">
+          <label for="hora_fin">hora de fin</label>
+          <input type="time" id="hora_fin" name="hora_fin"
+            class="glass-input" required>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- — VALORES ECONÓMICOS — -->
+    <div class="glass-card">
+      <div class="section-title">valores de la prestación</div>
+      <div class="fields-grid">
+
+        <div class="field-group">
+          <label for="valor_total_prestacion">valor total de la prestación</label>
+          <input type="text" id="valor_total_prestacion" name="valor_total_prestacion"
+            class="glass-input" placeholder="ej: Cuatro millones de pesos" required>
+        </div>
+
+        <div class="field-group highlight-input">
+          <label for="monto_total_pesos">monto total en pesos ($)</label>
+          <div class="input-prefix-wrap">
+            <span class="input-prefix">$</span>
+            <input type="number" id="monto_total_pesos" name="monto_total_pesos"
+              class="glass-input" placeholder="0.00" min="0" step="0.01" required>
+          </div>
+        </div>
+
+        <div class="field-group highlight-input">
+          <label for="monto_total_reserva">monto de reserva ($)</label>
+          <div class="input-prefix-wrap">
+            <span class="input-prefix">$</span>
+            <input type="number" id="monto_total_reserva" name="monto_total_reserva"
+              class="glass-input" placeholder="0.00" min="0" step="0.01" required>
+          </div>
+        </div>
+
+        <div class="field-group highlight-input">
+          <label for="saldo_a_cancelar">saldo a cancelar ($)</label>
+          <div class="input-prefix-wrap">
+            <span class="input-prefix">$</span>
+            <input type="number" id="saldo_a_cancelar" name="saldo_a_cancelar"
+              class="glass-input" placeholder="0.00" min="0" step="0.01" required>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- — FECHA DE FIRMA — -->
+    <div class="glass-card">
+      <div class="firma-section">
+        <div class="section-title">fecha de firma del contrato</div>
+        <div class="fields-grid cols-3">
+
+          <div class="field-group">
+            <label for="dia_firma">día</label>
+            <input type="number" id="dia_firma" name="dia_firma"
+              class="glass-input" placeholder="DD" min="1" max="31" required>
+          </div>
+
+          <div class="field-group">
+            <label for="mes_firma">mes</label>
+            <select id="mes_firma" name="mes_firma" class="glass-input" required
+              style="background:rgba(30,10,60,0.5);cursor:pointer;">
+              <option value="" disabled selected>— mes —</option>
+              <option value="enero">enero</option>
+              <option value="febrero">febrero</option>
+              <option value="marzo">marzo</option>
+              <option value="abril">abril</option>
+              <option value="mayo">mayo</option>
+              <option value="junio">junio</option>
+              <option value="julio">julio</option>
+              <option value="agosto">agosto</option>
+              <option value="septiembre">septiembre</option>
+              <option value="octubre">octubre</option>
+              <option value="noviembre">noviembre</option>
+              <option value="diciembre">diciembre</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label for="año_firma">año</label>
+            <input type="number" id="año_firma" name="año_firma"
+              class="glass-input" placeholder="AAAA" min="2024" max="2099" required>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- — ACCIONES — -->
+    <div class="glass-card" style="padding:24px;">
+      <div class="actions-row">
+        <button type="button" class="btn btn-reset" onclick="resetForm()">🗑 limpiar</button>
+        <button type="submit" class="btn btn-enviar" id="btn-enviar">
+          ✉ enviar contrato
+        </button>
+      </div>
+      <div class="status-bar" id="status-bar"></div>
+    </div>
+
+  </form>
+</div>
+
+<script>
+  const WEBHOOK_URL = 'https://n8n.optimizar-ia.com/webhook/ffddd034-a86a-4fc7-b6b0-2495316f6bd5';
+
+  // Auto-completar año actual
+  document.getElementById('año_firma').value = new Date().getFullYear();
+
+  // Calcular saldo automáticamente cuando cambian monto total o reserva
+  function calcularSaldo() {
+    const total = parseFloat(document.getElementById('monto_total_pesos').value) || 0;
+    const reserva = parseFloat(document.getElementById('monto_total_reserva').value) || 0;
+    const saldo = total - reserva;
+    if (total > 0 && reserva > 0) {
+      document.getElementById('saldo_a_cancelar').value = saldo >= 0 ? saldo.toFixed(2) : 0;
+    }
+  }
+  document.getElementById('monto_total_pesos').addEventListener('input', calcularSaldo);
+  document.getElementById('monto_total_reserva').addEventListener('input', calcularSaldo);
+
+  // Reset
+  function resetForm() {
+    document.getElementById('contrato-form').reset();
+    document.getElementById('año_firma').value = new Date().getFullYear();
+    setStatus('', '');
+  }
+
+  // Status helper
+  function setStatus(type, msg) {
+    const bar = document.getElementById('status-bar');
+    bar.className = 'status-bar' + (type ? ' ' + type : '');
+    bar.textContent = msg;
+  }
+
+  // Envío del formulario
+  document.getElementById('contrato-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn = document.getElementById('btn-enviar');
+    btn.disabled = true;
+    btn.textContent = '⏳ enviando...';
+    setStatus('loading', 'enviando contrato al webhook...');
+
+    // Recolectar todos los campos
+    const payload = {
+      nombre_prestatario:    document.getElementById('nombre_prestatario').value.trim(),
+      DNI_prestatario:       document.getElementById('DNI_prestatario').value.trim(),
+      domicilio_prestatario: document.getElementById('domicilio_prestatario').value.trim(),
+      lugar_evento:          document.getElementById('lugar_evento').value.trim(),
+      dia_evento:            document.getElementById('dia_evento').value,
+      hora_inicio:           document.getElementById('hora_inicio').value,
+      hora_fin:              document.getElementById('hora_fin').value,
+      dias_para_pagar:       document.getElementById('dias_para_pagar').value,
+      valor_total_prestacion:document.getElementById('valor_total_prestacion').value.trim(),
+      monto_total_pesos:     parseFloat(document.getElementById('monto_total_pesos').value) || 0,
+      monto_total_reserva:   parseFloat(document.getElementById('monto_total_reserva').value) || 0,
+      saldo_a_cancelar:      parseFloat(document.getElementById('saldo_a_cancelar').value) || 0,
+      dia_firma:             document.getElementById('dia_firma').value,
+      mes_firma:             document.getElementById('mes_firma').value,
+      año_firma:             document.getElementById('año_firma').value,
+      timestamp:             new Date().toISOString()
+    };
+
+    // Validaciones básicas
+    const requeridos = [
+      'nombre_prestatario','DNI_prestatario','domicilio_prestatario',
+      'lugar_evento','dia_evento','hora_inicio','hora_fin',
+      'dias_para_pagar','valor_total_prestacion','mes_firma','dia_firma','año_firma'
+    ];
+    const vacios = requeridos.filter(k => !payload[k]);
+    if (vacios.length > 0 || payload.monto_total_pesos <= 0) {
+      setStatus('error', '⚠ completá todos los campos obligatorios antes de enviar.');
+      btn.disabled = false;
+      btn.textContent = '✉ enviar contrato';
+      return;
+    }
+
+    try {
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json, text/plain, */*'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        setStatus('success', '✓ contrato enviado correctamente. El workflow de n8n procesará la información.');
+        btn.textContent = '✓ enviado';
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = '✉ enviar contrato';
+        }, 4000);
+      } else {
+        const errText = await response.text();
+        console.error('Webhook error:', response.status, errText);
+        setStatus('error', `⚠ error al enviar (${response.status}). Verificá el webhook de n8n.`);
+        btn.disabled = false;
+        btn.textContent = '✉ enviar contrato';
+      }
+    } catch (err) {
+      console.error('Network error:', err);
+      setStatus('error', '⚠ error de red. Verificá tu conexión e intentá nuevamente.');
+      btn.disabled = false;
+      btn.textContent = '✉ enviar contrato';
+    }
+  });
+</script>
+
+</body>
+</html>
