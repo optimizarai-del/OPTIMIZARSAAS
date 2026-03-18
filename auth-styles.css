@@ -63,7 +63,7 @@
     font-weight: 600;
     color: var(--accent-blue);
     border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-    text-transform: lowercase;
+    text-transform: capitalize;
 }
 
 .optimizar-table td {
