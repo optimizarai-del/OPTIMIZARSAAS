@@ -73,6 +73,17 @@ function initializeDatabase() {
   )`, (err) => {
     if (err) console.error("Error creating requirements table:", err.message);
   });
+
+  db.run(`CREATE TABLE IF NOT EXISTS req_comments (
+    id TEXT PRIMARY KEY,
+    requirementId TEXT NOT NULL,
+    adminId TEXT NOT NULL,
+    adminName TEXT NOT NULL,
+    text TEXT NOT NULL,
+    createdAt TEXT
+  )`, (err) => {
+    if (err) console.error("Error creating req_comments table:", err.message);
+  });
 }
 
 function seedDefaultUsers() {
@@ -333,7 +344,36 @@ app.delete('/api/requirements/:id', (req, res) => {
   const { id } = req.params;
   db.run("DELETE FROM requirements WHERE id = ?", [id], function(err) {
     if (err) return res.status(500).json({ error: err.message });
+    db.run("DELETE FROM req_comments WHERE requirementId = ?", [id], () => {});
     res.json({ success: true });
+  });
+});
+
+// =========================================================================
+// COMMENTS ENDPOINTS
+// =========================================================================
+
+// GET comments for a requirement
+app.get('/api/comments', (req, res) => {
+  const { requirementId } = req.query;
+  if (!requirementId) return res.status(400).json({ error: 'requirementId requerido.' });
+  db.all("SELECT * FROM req_comments WHERE requirementId = ? ORDER BY createdAt ASC", [requirementId], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// POST add comment
+app.post('/api/comments', (req, res) => {
+  const { requirementId, adminId, adminName, text } = req.body;
+  if (!requirementId || !adminId || !text) {
+    return res.status(400).json({ success: false, message: 'Campos requeridos faltantes.' });
+  }
+  const id = Date.now().toString() + Math.random().toString(36).substring(7);
+  const q = `INSERT INTO req_comments (id, requirementId, adminId, adminName, text, createdAt) VALUES (?, ?, ?, ?, ?, ?)`;
+  db.run(q, [id, requirementId, adminId, adminName, text, new Date().toISOString()], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true, comment: { id, requirementId, adminId, adminName, text, createdAt: new Date().toISOString() } });
   });
 });
 

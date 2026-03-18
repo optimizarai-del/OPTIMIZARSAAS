@@ -451,8 +451,9 @@ async function renderClientsTable() {
       <td onclick="viewClientDashboard('${client.id}')">${client.email}</td>
       <td>${crmBtn}</td>
       <td>
-        <button onclick="editUserRecord('${client.id}')" class="btn-optimizar" style="padding:5px 15px;font-size:0.8rem;">editar</button>
-        <button onclick="removeUserRecord('${client.id}')" class="btn-optimizar" style="padding:5px 15px;font-size:0.8rem;background:rgba(244,114,182,0.1);border-color:var(--accent-pink);margin-left:5px;">borrar</button>
+        <a href="requerimientos.html?userId=${client.id}" class="btn-optimizar" style="padding:5px 15px;font-size:0.8rem;background:rgba(167,139,250,0.15);border-color:#a78bfa;text-decoration:none;">Ver Requerimientos</a>
+        <button onclick="editUserRecord('${client.id}')" class="btn-optimizar" style="padding:5px 15px;font-size:0.8rem;margin-left:5px;">Editar</button>
+        <button onclick="removeUserRecord('${client.id}')" class="btn-optimizar" style="padding:5px 15px;font-size:0.8rem;background:rgba(244,114,182,0.1);border-color:var(--accent-pink);margin-left:5px;">Borrar</button>
       </td>
     `;
     tbody.appendChild(tr);

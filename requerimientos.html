@@ -15,7 +15,6 @@
     </script>
 
     <style>
-        /* Priority badges */
         .badge-prioridad {
             display: inline-block;
             padding: 3px 12px;
@@ -29,7 +28,6 @@
         .badge-media { background: rgba(251,191,36,0.2); border: 1px solid rgba(251,191,36,0.5); color: #fde68a; }
         .badge-baja  { background: rgba(52,211,153,0.2); border: 1px solid rgba(52,211,153,0.5); color: #6ee7b7; }
 
-        /* Requirement cards */
         .req-card {
             background: rgba(255,255,255,0.06);
             border: 1px solid rgba(255,255,255,0.12);
@@ -37,8 +35,9 @@
             padding: 20px 24px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
             transition: background 0.2s;
+            margin-bottom: 12px;
         }
         .req-card:hover { background: rgba(255,255,255,0.09); }
 
@@ -58,17 +57,17 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-wrap: wrap;
         }
         .req-card-body {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 14px;
         }
-        @media (max-width: 700px) {
-            .req-card-body { grid-template-columns: 1fr; }
-        }
+        @media (max-width: 700px) { .req-card-body { grid-template-columns: 1fr; } }
+
         .req-field label {
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             color: var(--accent-blue);
             margin-bottom: 4px;
             text-transform: uppercase;
@@ -82,6 +81,82 @@
         }
         .req-field.full { grid-column: 1 / -1; }
 
+        /* Comments section */
+        .comments-section {
+            border-top: 1px solid rgba(255,255,255,0.08);
+            padding-top: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .comments-toggle {
+            background: none;
+            border: none;
+            color: var(--accent-blue);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-family);
+            text-align: left;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-transform: capitalize;
+        }
+        .comments-toggle:hover { color: #fff; }
+
+        .comments-body { display: none; flex-direction: column; gap: 8px; }
+        .comments-body.open { display: flex; }
+
+        .comment-item {
+            background: rgba(255,255,255,0.05);
+            border-left: 3px solid var(--accent-blue);
+            border-radius: 0 8px 8px 0;
+            padding: 10px 14px;
+        }
+        .comment-meta {
+            font-size: 0.75rem;
+            color: var(--accent-blue);
+            font-weight: 600;
+            margin-bottom: 4px;
+            text-transform: capitalize;
+        }
+        .comment-text {
+            font-size: 0.88rem;
+            color: rgba(255,255,255,0.85);
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        .comment-form {
+            display: flex;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .comment-form textarea {
+            flex: 1;
+            min-height: 60px;
+            resize: vertical;
+            font-family: var(--font-family);
+            font-size: 0.85rem;
+        }
+        .btn-comment {
+            background: rgba(56,189,248,0.15);
+            border: 1px solid rgba(56,189,248,0.4);
+            color: #fff;
+            border-radius: 10px;
+            padding: 8px 16px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: var(--font-family);
+            align-self: flex-end;
+            transition: all 0.2s;
+            text-transform: capitalize;
+        }
+        .btn-comment:hover { background: rgba(56,189,248,0.3); }
+
         .btn-delete {
             background: rgba(239,68,68,0.15);
             border: 1px solid rgba(239,68,68,0.4);
@@ -92,14 +167,12 @@
             cursor: pointer;
             font-family: var(--font-family);
             transition: all 0.2s;
+            text-transform: capitalize;
         }
-        .btn-delete:hover {
-            background: rgba(239,68,68,0.3);
-        }
+        .btn-delete:hover { background: rgba(239,68,68,0.3); }
 
-        /* Priority group header */
         .priority-group-title {
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 700;
             letter-spacing: 0.1em;
             text-transform: uppercase;
@@ -110,7 +183,6 @@
         }
         .priority-group-title:first-child { margin-top: 0; }
 
-        /* Empty state */
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -118,18 +190,40 @@
         }
         .empty-state p { font-size: 1rem; margin-top: 10px; }
 
-        /* textarea override */
-        textarea.glass-input {
+        textarea.glass-input, .comment-form textarea.glass-input {
             resize: vertical;
             min-height: 80px;
             font-family: var(--font-family);
         }
 
-        /* Select dropdown options contrast */
         select.glass-input option {
             background: #1e1e2e;
             color: #ffffff;
         }
+
+        /* Admin client info banner */
+        .client-banner {
+            background: rgba(167,139,250,0.12);
+            border: 1px solid rgba(167,139,250,0.3);
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: 0.88rem;
+            color: #c4b5fd;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .client-banner a {
+            color: #a78bfa;
+            font-size: 0.8rem;
+            text-decoration: none;
+            border: 1px solid rgba(167,139,250,0.4);
+            padding: 4px 12px;
+            border-radius: 20px;
+            transition: all 0.2s;
+        }
+        .client-banner a:hover { background: rgba(167,139,250,0.2); }
     </style>
 </head>
 <body>
@@ -153,24 +247,26 @@
 
     <main class="admin-layout">
 
-        <!-- Barra Lateral Izquierda (cliente) -->
-        <aside class="glass-container admin-sidebar">
-            <a href="dashboard.html" class="sidebar-btn" style="text-decoration:none;">Dashboard</a>
-            <button class="sidebar-btn active" id="btn-requerimientos">Requerimientos</button>
+        <!-- Sidebar Izquierdo -->
+        <aside class="glass-container admin-sidebar" id="sidebar">
+            <!-- Generado dinámicamente según rol -->
         </aside>
 
         <!-- Contenido Principal -->
         <section class="glass-container admin-main-content">
 
+            <!-- Banner info cliente (solo admin) -->
+            <div id="client-banner" class="client-banner" style="display:none;"></div>
+
             <!-- Encabezado -->
             <div class="panel-header" style="margin-bottom: 24px;">
-                <h2 style="margin:0;">Requerimientos</h2>
-                <button class="btn-optimizar" onclick="openReqModal()">+ Nuevo Requerimiento</button>
+                <h2 style="margin:0;" id="page-title">Requerimientos</h2>
+                <button class="btn-optimizar" id="btn-nuevo" onclick="openReqModal()" style="display:none;">+ Nuevo Requerimiento</button>
             </div>
 
-            <!-- Lista de requerimientos -->
+            <!-- Lista -->
             <div id="requirements-list">
-                <div class="empty-state" id="empty-state">
+                <div class="empty-state" id="empty-state" style="display:none;">
                     <p>Aún no hay requerimientos cargados.</p>
                     <p style="font-size:0.85rem; margin-top:8px;">Hacé clic en <strong>+ Nuevo Requerimiento</strong> para agregar el primero.</p>
                 </div>
@@ -187,7 +283,7 @@
 
                 <div class="form-group">
                     <label class="input-label">Área De Implementación:</label>
-                    <input type="text" id="req-area" class="glass-input" placeholder="ej: Ventas, Marketing, Atención al cliente..." required>
+                    <input type="text" id="req-area" class="glass-input" placeholder="ej: Ventas, Marketing, Atención Al Cliente..." required>
                 </div>
 
                 <div class="form-group">
@@ -211,7 +307,7 @@
 
                 <div class="form-group">
                     <label class="input-label">Tiempo Manual De La Tarea Hoy:</label>
-                    <input type="text" id="req-tiempo" class="glass-input" placeholder="ej: 2 horas / 45 minutos">
+                    <input type="text" id="req-tiempo" class="glass-input" placeholder="ej: 2 Horas / 45 Minutos">
                 </div>
 
                 <div id="req-error" style="display:none; color:#fca5a5; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); border-radius:8px; padding:10px; margin-bottom:10px; font-size:0.9rem;"></div>
@@ -226,31 +322,94 @@
 
     <script>
         const session = getCurrentSession();
-        let requirements = [];
+        const isAdmin = session && session.role === 'admin';
 
-        // ── Cargar requerimientos ────────────────────────────────────────────
-        async function loadRequirements() {
-            if (!session) return;
+        // Obtener userId del query param (admin viendo cliente específico)
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetUserId = urlParams.get('userId');
+
+        // userId que se usa para cargar requerimientos
+        const viewUserId = isAdmin && targetUserId ? targetUserId : (session ? session.userId : null);
+
+        let requirements = [];
+        let clientInfo = null;
+
+        // ── Init ─────────────────────────────────────────────────────────────
+        async function init() {
+            renderAuthenticatedNav('requerimientos');
+            renderSidebar();
+
+            // Si admin con cliente específico → mostrar banner
+            if (isAdmin && targetUserId) {
+                await loadClientInfo();
+            }
+
+            // Mostrar botón nuevo solo a clientes (no admins)
+            if (!isAdmin) {
+                document.getElementById('btn-nuevo').style.display = 'inline-block';
+            }
+
+            await loadRequirements();
+        }
+
+        // ── Sidebar según rol ─────────────────────────────────────────────────
+        function renderSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            if (isAdmin) {
+                sidebar.innerHTML = `
+                    <a href="admin.html" class="sidebar-btn" style="text-decoration:none;">Panel Admin</a>
+                    <a href="requerimientos.html" class="sidebar-btn active" style="text-decoration:none;">Requerimientos</a>
+                `;
+            } else {
+                sidebar.innerHTML = `
+                    <a href="dashboard.html" class="sidebar-btn" style="text-decoration:none;">Dashboard</a>
+                    <button class="sidebar-btn active">Requerimientos</button>
+                `;
+            }
+        }
+
+        // ── Info del cliente (para banner admin) ──────────────────────────────
+        async function loadClientInfo() {
             try {
-                const res = await fetch(`/api/requirements?userId=${session.userId}`);
+                const res = await fetch('/api/users');
+                const users = await res.json();
+                clientInfo = users.find(u => u.id === targetUserId);
+                if (clientInfo) {
+                    const name = clientInfo.companyName || clientInfo.name;
+                    document.getElementById('client-banner').style.display = 'flex';
+                    document.getElementById('client-banner').innerHTML = `
+                        <span>👤 Viendo requerimientos de: <strong>${name}</strong></span>
+                        <a href="admin.html">← Volver Al Panel</a>
+                    `;
+                    document.getElementById('page-title').textContent = `Requerimientos — ${name}`;
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // ── Cargar requerimientos ─────────────────────────────────────────────
+        async function loadRequirements() {
+            if (!viewUserId) return;
+            try {
+                const res = await fetch(`/api/requirements?userId=${viewUserId}`);
                 requirements = await res.json();
-                renderList();
+                await renderList();
             } catch(e) {
                 console.error('Error cargando requerimientos:', e);
             }
         }
 
-        // ── Renderizar lista ─────────────────────────────────────────────────
-        function renderList() {
+        // ── Renderizar lista ──────────────────────────────────────────────────
+        async function renderList() {
             const container = document.getElementById('requirements-list');
             const empty = document.getElementById('empty-state');
 
             if (requirements.length === 0) {
                 container.innerHTML = '';
-                container.appendChild(empty);
                 empty.style.display = 'block';
+                container.appendChild(empty);
                 return;
             }
+            empty.style.display = 'none';
 
             const groups = { alta: [], media: [], baja: [] };
             requirements.forEach(r => {
@@ -259,82 +418,200 @@
             });
 
             const groupLabels = { alta: '🔴 Alta Prioridad', media: '🟡 Media Prioridad', baja: '🟢 Baja Prioridad' };
-            let html = '';
+            container.innerHTML = '';
 
             for (const [key, label] of Object.entries(groupLabels)) {
                 if (groups[key].length === 0) continue;
-                html += `<div class="priority-group-title">${label}</div>`;
-                groups[key].forEach(r => {
-                    html += `
-                    <div class="req-card" style="margin-bottom:12px;">
-                        <div class="req-card-header">
-                            <span class="req-area">${escapeHtml(r.area)}</span>
-                            <div class="req-card-meta">
-                                <span class="badge-prioridad badge-${r.prioridad}">${r.prioridad}</span>
-                                <button class="btn-delete" onclick="deleteRequirement('${r.id}')">Eliminar</button>
-                            </div>
-                        </div>
-                        <div class="req-card-body">
-                            <div class="req-field full">
-                                <label>Tarea</label>
-                                <p>${escapeHtml(r.tarea)}</p>
-                            </div>
-                            <div class="req-field full">
-                                <label>Cómo Se Realiza Actualmente</label>
-                                <p>${escapeHtml(r.comoSeRealiza || '—')}</p>
-                            </div>
-                            ${r.tiempoManual ? `<div class="req-field">
-                                <label>Tiempo Manual Hoy</label>
-                                <p>${escapeHtml(r.tiempoManual)}</p>
-                            </div>` : ''}
-                            <div class="req-field">
-                                <label>Fecha De Carga</label>
-                                <p>${new Date(r.createdAt).toLocaleDateString('es-AR', { day:'2-digit', month:'2-digit', year:'numeric' })}</p>
-                            </div>
-                        </div>
-                    </div>`;
-                });
+
+                const groupTitle = document.createElement('div');
+                groupTitle.className = 'priority-group-title';
+                groupTitle.textContent = label;
+                container.appendChild(groupTitle);
+
+                for (const r of groups[key]) {
+                    const comments = await loadComments(r.id);
+                    const card = buildCard(r, comments);
+                    container.appendChild(card);
+                }
             }
-
-            container.innerHTML = html;
         }
 
-        function escapeHtml(text) {
-            return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        // ── Cargar comentarios de un requerimiento ────────────────────────────
+        async function loadComments(requirementId) {
+            try {
+                const res = await fetch(`/api/comments?requirementId=${requirementId}`);
+                return await res.json();
+            } catch(e) { return []; }
         }
 
-        // ── Modal ────────────────────────────────────────────────────────────
+        // ── Construir card ────────────────────────────────────────────────────
+        function buildCard(r, comments) {
+            const card = document.createElement('div');
+            card.className = 'req-card';
+            card.id = `card-${r.id}`;
+
+            const deleteBtn = !isAdmin
+                ? `<button class="btn-delete" onclick="deleteRequirement('${r.id}')">Eliminar</button>`
+                : '';
+
+            const commentsHtml = buildCommentsHtml(r.id, comments);
+
+            card.innerHTML = `
+                <div class="req-card-header">
+                    <span class="req-area">${escapeHtml(r.area)}</span>
+                    <div class="req-card-meta">
+                        <span class="badge-prioridad badge-${r.prioridad}">${r.prioridad}</span>
+                        ${deleteBtn}
+                    </div>
+                </div>
+                <div class="req-card-body">
+                    <div class="req-field full">
+                        <label>Tarea</label>
+                        <p>${escapeHtml(r.tarea)}</p>
+                    </div>
+                    <div class="req-field full">
+                        <label>Cómo Se Realiza Actualmente</label>
+                        <p>${escapeHtml(r.comoSeRealiza || '—')}</p>
+                    </div>
+                    ${r.tiempoManual ? `<div class="req-field">
+                        <label>Tiempo Manual Hoy</label>
+                        <p>${escapeHtml(r.tiempoManual)}</p>
+                    </div>` : ''}
+                    <div class="req-field">
+                        <label>Fecha De Carga</label>
+                        <p>${new Date(r.createdAt).toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'})}</p>
+                    </div>
+                </div>
+                ${commentsHtml}
+            `;
+            return card;
+        }
+
+        // ── HTML de comentarios ───────────────────────────────────────────────
+        function buildCommentsHtml(reqId, comments) {
+            const count = comments.length;
+            const label = count === 0 ? 'Sin Comentarios' : `${count} Comentario${count > 1 ? 's' : ''}`;
+
+            const commentsItems = comments.map(c => `
+                <div class="comment-item">
+                    <div class="comment-meta">${escapeHtml(c.adminName)} · ${new Date(c.createdAt).toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'})}</div>
+                    <p class="comment-text">${escapeHtml(c.text)}</p>
+                </div>
+            `).join('');
+
+            const commentForm = isAdmin ? `
+                <div class="comment-form">
+                    <textarea class="glass-input" id="comment-input-${reqId}" placeholder="Escribir comentario..."></textarea>
+                    <button class="btn-comment" onclick="submitComment('${reqId}')">Comentar</button>
+                </div>
+            ` : '';
+
+            return `
+                <div class="comments-section">
+                    <button class="comments-toggle" onclick="toggleComments('${reqId}')">
+                        <span id="toggle-icon-${reqId}">▶</span> ${label}
+                    </button>
+                    <div class="comments-body" id="comments-body-${reqId}">
+                        <div id="comments-list-${reqId}">${commentsItems}</div>
+                        ${commentForm}
+                    </div>
+                </div>
+            `;
+        }
+
+        // ── Toggle comentarios ────────────────────────────────────────────────
+        function toggleComments(reqId) {
+            const body = document.getElementById(`comments-body-${reqId}`);
+            const icon = document.getElementById(`toggle-icon-${reqId}`);
+            const isOpen = body.classList.toggle('open');
+            icon.textContent = isOpen ? '▼' : '▶';
+        }
+
+        // ── Enviar comentario ─────────────────────────────────────────────────
+        async function submitComment(reqId) {
+            const input = document.getElementById(`comment-input-${reqId}`);
+            const text = input.value.trim();
+            if (!text) return;
+
+            const btn = input.nextElementSibling;
+            btn.disabled = true;
+            btn.textContent = 'Enviando...';
+
+            try {
+                const res = await fetch('/api/comments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        requirementId: reqId,
+                        adminId: session.userId,
+                        adminName: session.name,
+                        text
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    input.value = '';
+                    // Refrescar solo los comentarios de esta card
+                    const comments = await loadComments(reqId);
+                    const listEl = document.getElementById(`comments-list-${reqId}`);
+                    listEl.innerHTML = comments.map(c => `
+                        <div class="comment-item">
+                            <div class="comment-meta">${escapeHtml(c.adminName)} · ${new Date(c.createdAt).toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'})}</div>
+                            <p class="comment-text">${escapeHtml(c.text)}</p>
+                        </div>
+                    `).join('');
+                    // Asegurarse de que el panel esté abierto
+                    document.getElementById(`comments-body-${reqId}`).classList.add('open');
+                    document.getElementById(`toggle-icon-${reqId}`).textContent = '▼';
+                }
+            } catch(e) {
+                console.error('Error enviando comentario:', e);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Comentar';
+            }
+        }
+
+        // ── Eliminar requerimiento ────────────────────────────────────────────
+        async function deleteRequirement(id) {
+            if (!confirm('¿Eliminar este requerimiento?')) return;
+            try {
+                const res = await fetch(`/api/requirements/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) await loadRequirements();
+            } catch(e) { console.error(e); }
+        }
+
+        // ── Modal ─────────────────────────────────────────────────────────────
         function openReqModal() {
             document.getElementById('req-form').reset();
             document.getElementById('req-error').style.display = 'none';
             document.getElementById('req-modal').style.display = 'flex';
         }
-
         function closeReqModal() {
             document.getElementById('req-modal').style.display = 'none';
         }
-
         document.getElementById('req-modal').addEventListener('click', (e) => {
             if (e.target === document.getElementById('req-modal')) closeReqModal();
         });
 
-        // ── Crear requerimiento ──────────────────────────────────────────────
+        // ── Crear requerimiento ───────────────────────────────────────────────
         document.getElementById('req-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const errEl = document.getElementById('req-error');
             errEl.style.display = 'none';
 
             const payload = {
-                userId:         session.userId,
-                area:           document.getElementById('req-area').value.trim(),
-                tarea:          document.getElementById('req-tarea').value.trim(),
-                comoSeRealiza:  document.getElementById('req-como').value.trim(),
-                prioridad:      document.getElementById('req-prioridad').value,
-                tiempoManual:   document.getElementById('req-tiempo').value.trim()
+                userId:        viewUserId,
+                area:          document.getElementById('req-area').value.trim(),
+                tarea:         document.getElementById('req-tarea').value.trim(),
+                comoSeRealiza: document.getElementById('req-como').value.trim(),
+                prioridad:     document.getElementById('req-prioridad').value,
+                tiempoManual:  document.getElementById('req-tiempo').value.trim()
             };
 
             const submitBtn = e.target.querySelector('button[type="submit"]');
-            submitBtn.textContent = 'creando...';
+            submitBtn.textContent = 'Creando...';
             submitBtn.disabled = true;
 
             try {
@@ -352,7 +629,7 @@
                     errEl.style.display = 'block';
                 }
             } catch(err) {
-                errEl.textContent = 'Error de conexión con el servidor.';
+                errEl.textContent = 'Error De Conexión Con El Servidor.';
                 errEl.style.display = 'block';
             } finally {
                 submitBtn.textContent = 'Crear';
@@ -360,21 +637,11 @@
             }
         });
 
-        // ── Eliminar requerimiento ───────────────────────────────────────────
-        async function deleteRequirement(id) {
-            if (!confirm('¿Eliminar este requerimiento?')) return;
-            try {
-                const res = await fetch(`/api/requirements/${id}`, { method: 'DELETE' });
-                const data = await res.json();
-                if (data.success) await loadRequirements();
-            } catch(e) {
-                console.error('Error eliminando requerimiento:', e);
-            }
+        function escapeHtml(text) {
+            return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
         }
 
-        // ── Init ─────────────────────────────────────────────────────────────
-        renderAuthenticatedNav('requerimientos');
-        loadRequirements();
+        init();
     </script>
 
 </body>
