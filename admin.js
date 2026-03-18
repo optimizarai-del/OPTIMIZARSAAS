@@ -283,18 +283,92 @@ function addActionButtonField(nameVal, webhookUrlVal) {
   const div = document.createElement('div');
   div.className = 'action-btn-block glass-container';
   div.style.cssText = 'padding:10px;margin-bottom:10px;background:rgba(52,211,153,0.05);border:1px solid rgba(52,211,153,0.2);border-radius:8px;position:relative;';
+  const switchIdx = Date.now();
   div.innerHTML = `
     <button type="button" onclick="this.parentElement.remove()" style="position:absolute;top:5px;right:5px;background:none;border:none;color:#f87171;cursor:pointer;font-size:1.2rem;line-height:1;">&times;</button>
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
       <span style="color:#34d399;font-size:0.8rem;">⚡</span>
-      <input type="text" class="glass-input ab-name" placeholder="Nombre del switch (ej. Envío de Mails)" value="${nameVal || ''}" style="padding:5px 10px;font-size:0.85rem;">
+      <input type="text" class="glass-input ab-name" placeholder="Nombre del switch (ej. Envío de Mails)" value="${nameVal || ''}" style="padding:5px 10px;font-size:0.85rem;flex:1;">
     </div>
-    <div>
-      <input type="url" class="glass-input ab-url" placeholder="https://n8n.optimizar-ia.com/webhook/email-switch" value="${webhookUrlVal || ''}" style="padding:5px 10px;font-size:0.85rem;font-family:monospace;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <input type="url" class="glass-input ab-url" placeholder="https://n8n.optimizar-ia.com/webhook/email-switch" value="${webhookUrlVal || ''}" style="padding:5px 10px;font-size:0.85rem;font-family:monospace;flex:1;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;">
+        <button type="button" id="admsw-${switchIdx}-btn"
+          onclick="adminToggleSwitch('admsw-${switchIdx}', this.closest('.action-btn-block').querySelector('.ab-url').value)"
+          style="position:relative;width:44px;height:24px;border-radius:12px;border:1px solid rgba(255,255,255,0.15);cursor:pointer;background:rgba(255,255,255,0.1);transition:background 0.3s,box-shadow 0.3s;outline:none;">
+          <span id="admsw-${switchIdx}-knob" style="position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#aaa;transition:transform 0.3s,background 0.3s;"></span>
+        </button>
+        <span id="admsw-${switchIdx}-status" style="font-size:0.6rem;color:#aaa;">—</span>
+      </div>
     </div>
-    <p style="font-size:0.7rem;color:rgba(52,211,153,0.7);margin-top:5px;margin-bottom:0;">URL del Webhook GET/POST del workflow switch en n8n</p>
+    <p style="font-size:0.7rem;color:rgba(52,211,153,0.7);margin-top:2px;margin-bottom:0;">URL del Webhook GET/POST del workflow switch en n8n</p>
   `;
   container.appendChild(div);
+  if (webhookUrlVal) adminFetchSwitchState(`admsw-${switchIdx}`, webhookUrlVal);
+}
+
+async function adminFetchSwitchState(switchId, webhookUrl) {
+  try {
+    const res = await fetch(webhookUrl, { method: 'GET' });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    const item = Array.isArray(data) ? data[0] : data;
+    const isOn = item.estado_nuevo
+      ? item.estado_nuevo === 'ON'
+      : (item.emailEnabled ?? item.enabled ?? item.active ?? false);
+    adminUpdateSwitchUI(switchId, isOn, item.mensaje);
+  } catch {
+    const s = document.getElementById(`${switchId}-status`);
+    if (s) { s.textContent = 'sin conexión'; s.style.color = '#aaa'; }
+  }
+}
+
+async function adminToggleSwitch(switchId, webhookUrl) {
+  if (!webhookUrl) return;
+  const btnEl = document.getElementById(`${switchId}-btn`);
+  const statusEl = document.getElementById(`${switchId}-status`);
+  if (btnEl) btnEl.disabled = true;
+  if (statusEl) { statusEl.textContent = '...'; statusEl.style.color = '#aaa'; }
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'toggle' })
+    });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    const item = Array.isArray(data) ? data[0] : data;
+    const isOn = item.estado_nuevo
+      ? item.estado_nuevo === 'ON'
+      : (item.emailEnabled ?? item.enabled ?? item.active ?? false);
+    adminUpdateSwitchUI(switchId, isOn, item.mensaje);
+  } catch {
+    if (statusEl) { statusEl.textContent = 'error'; statusEl.style.color = '#f87171'; }
+  } finally {
+    if (btnEl) btnEl.disabled = false;
+  }
+}
+
+function adminUpdateSwitchUI(switchId, isOn, mensaje) {
+  const btnEl = document.getElementById(`${switchId}-btn`);
+  const knobEl = document.getElementById(`${switchId}-knob`);
+  const statusEl = document.getElementById(`${switchId}-status`);
+  if (!btnEl || !knobEl) return;
+  if (isOn) {
+    btnEl.style.background = 'rgba(52,211,153,0.35)';
+    btnEl.style.borderColor = '#34d399';
+    btnEl.style.boxShadow = '0 0 10px 2px rgba(52,211,153,0.5)';
+    knobEl.style.transform = 'translateX(20px)';
+    knobEl.style.background = '#34d399';
+    if (statusEl) { statusEl.textContent = mensaje || 'ON'; statusEl.style.color = '#34d399'; }
+  } else {
+    btnEl.style.background = 'rgba(248,113,113,0.2)';
+    btnEl.style.borderColor = '#f87171';
+    btnEl.style.boxShadow = '0 0 10px 2px rgba(248,113,113,0.4)';
+    knobEl.style.transform = 'translateX(0)';
+    knobEl.style.background = '#f87171';
+    if (statusEl) { statusEl.textContent = mensaje || 'OFF'; statusEl.style.color = '#f87171'; }
+  }
 }
 
 function addSpecialButtonField(nameVal, urlVal) {

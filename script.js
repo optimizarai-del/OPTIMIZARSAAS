@@ -584,8 +584,11 @@ async function fetchSwitchState(switchId, webhookUrl) {
     const res = await fetch(webhookUrl, { method: 'GET' });
     if (!res.ok) throw new Error('Error del servidor');
     const data = await res.json();
-    const isOn = data.emailEnabled ?? data.enabled ?? data.active ?? false;
-    updateSwitchUI(switchId, isOn);
+    const item = Array.isArray(data) ? data[0] : data;
+    const isOn = item.estado_nuevo
+      ? item.estado_nuevo === 'ON'
+      : (item.emailEnabled ?? item.enabled ?? item.active ?? false);
+    updateSwitchUI(switchId, isOn, item.mensaje);
   } catch (err) {
     const statusEl = document.getElementById(`${switchId}-status`);
     if (statusEl) statusEl.textContent = 'sin conexión';
@@ -608,8 +611,11 @@ async function toggleActionSwitch(switchId, webhookUrl) {
     });
     if (!res.ok) throw new Error('Error del servidor');
     const data = await res.json();
-    const isOn = data.emailEnabled ?? data.enabled ?? data.active ?? false;
-    updateSwitchUI(switchId, isOn);
+    const item = Array.isArray(data) ? data[0] : data;
+    const isOn = item.estado_nuevo
+      ? item.estado_nuevo === 'ON'
+      : (item.emailEnabled ?? item.enabled ?? item.active ?? false);
+    updateSwitchUI(switchId, isOn, item.mensaje);
   } catch (err) {
     if (statusEl) { statusEl.textContent = 'error al cambiar'; statusEl.style.color = '#f87171'; }
   } finally {
@@ -617,24 +623,28 @@ async function toggleActionSwitch(switchId, webhookUrl) {
   }
 }
 
-function updateSwitchUI(switchId, isOn) {
+function updateSwitchUI(switchId, isOn, mensaje) {
   const btnEl = document.getElementById(`${switchId}-btn`);
   const knobEl = document.getElementById(`${switchId}-knob`);
   const statusEl = document.getElementById(`${switchId}-status`);
   if (!btnEl || !knobEl) return;
+
+  const wrapper = btnEl.parentElement;
 
   if (isOn) {
     btnEl.style.background = 'rgba(52,211,153,0.35)';
     btnEl.style.borderColor = '#34d399';
     knobEl.style.transform = 'translateX(24px)';
     knobEl.style.background = '#34d399';
-    if (statusEl) { statusEl.textContent = 'activo'; statusEl.style.color = '#34d399'; }
+    if (wrapper) wrapper.style.boxShadow = '0 0 12px 2px rgba(52,211,153,0.45)';
+    if (statusEl) { statusEl.textContent = mensaje || 'activo'; statusEl.style.color = '#34d399'; }
   } else {
     btnEl.style.background = 'rgba(248,113,113,0.2)';
     btnEl.style.borderColor = '#f87171';
     knobEl.style.transform = 'translateX(0)';
     knobEl.style.background = '#f87171';
-    if (statusEl) { statusEl.textContent = 'desactivado'; statusEl.style.color = '#f87171'; }
+    if (wrapper) wrapper.style.boxShadow = '0 0 12px 2px rgba(248,113,113,0.35)';
+    if (statusEl) { statusEl.textContent = mensaje || 'desactivado'; statusEl.style.color = '#f87171'; }
   }
 }
 
