@@ -157,6 +157,13 @@ label, .stat-label, .input-label {
     gap: 15px;
 }
 
+/* Layout wrapper cuando admin ve un cliente (sidebar + dashboard) */
+.client-layout {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+}
+
 /* Grid Principal */
 .dashboard-grid {
     display: grid;

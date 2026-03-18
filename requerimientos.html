@@ -355,12 +355,15 @@
         // ── Sidebar según rol ─────────────────────────────────────────────────
         function renderSidebar() {
             const sidebar = document.getElementById('sidebar');
-            if (isAdmin) {
+            if (isAdmin && targetUserId) {
+                // Admin viendo cliente específico
                 sidebar.innerHTML = `
-                    <a href="admin.html" class="sidebar-btn" style="text-decoration:none;">Panel Admin</a>
-                    <a href="requerimientos.html" class="sidebar-btn active" style="text-decoration:none;">Requerimientos</a>
+                    <a href="admin.html" class="sidebar-btn" style="text-decoration:none;font-size:0.9rem;">← Panel Admin</a>
+                    <a href="dashboard.html?clientId=${targetUserId}" class="sidebar-btn" style="text-decoration:none;">Dashboard</a>
+                    <button class="sidebar-btn active">Requerimientos</button>
                 `;
             } else {
+                // Cliente viendo sus propios requerimientos
                 sidebar.innerHTML = `
                     <a href="dashboard.html" class="sidebar-btn" style="text-decoration:none;">Dashboard</a>
                     <button class="sidebar-btn active">Requerimientos</button>

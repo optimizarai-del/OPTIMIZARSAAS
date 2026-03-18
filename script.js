@@ -52,6 +52,17 @@ async function initializeDashboardConfig() {
         const titleElement = document.getElementById('dashboard-client-title');
         if (titleElement) titleElement.textContent = `dashboard: ${currentUserName}`;
 
+        // Mostrar sidebar de navegación del cliente para el admin
+        const clientSidebar = document.getElementById('client-sidebar');
+        if (clientSidebar) {
+          clientSidebar.style.display = 'flex';
+          clientSidebar.innerHTML = `
+            <a href="admin.html" class="sidebar-btn" style="text-decoration:none;font-size:0.9rem;">← Panel Admin</a>
+            <button class="sidebar-btn active">Dashboard</button>
+            <a href="requerimientos.html?userId=${client.id}" class="sidebar-btn" style="text-decoration:none;">Requerimientos</a>
+          `;
+        }
+
         const linksContainer = document.getElementById('dashboard-external-links');
         if (linksContainer) {
           linksContainer.innerHTML = '';

@@ -44,7 +44,12 @@
     </header>
 
     <!-- Contenedor Principal -->
-    <main class="dashboard-grid">
+    <div class="client-layout" id="client-layout">
+
+    <!-- Sidebar de navegación (solo visible cuando admin ve un cliente) -->
+    <aside class="glass-container admin-sidebar" id="client-sidebar" style="display:none;"></aside>
+
+    <main class="dashboard-grid" style="flex:1;min-width:0;">
         
         <!-- Panel Izquierdo: Gráfico y Estadísticas -->
         <section class="left-panel">
@@ -127,6 +132,7 @@
         </div>
 
     </main>
+    </div><!-- /client-layout -->
 
     <!-- Custom Script -->
     <script src="script.js"></script>

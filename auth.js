@@ -174,7 +174,6 @@ function renderAuthenticatedNav(currentPage) {
     // Admin Link
     if (session.role === 'admin') {
         html += `<a href="admin.html" class="btn-optimizar ${currentPage === 'admin' ? 'active-nav' : ''}">panel admin</a>`;
-        html += `<a href="requerimientos.html" class="btn-optimizar ${currentPage === 'requerimientos' ? 'active-nav' : ''}">requerimientos</a>`;
     }
     
     // Solo mostramos el enlace "dashboard" a los usuarios normales que tienen acceso
