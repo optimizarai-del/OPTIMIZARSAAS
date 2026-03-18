@@ -179,6 +179,7 @@ function renderAuthenticatedNav(currentPage) {
     // Solo mostramos el enlace "dashboard" a los usuarios normales que tienen acceso
     if (session.role === 'user' && session.allowedPages && (session.allowedPages.includes('all') || session.allowedPages.includes('dashboard'))) {
         html += `<a href="dashboard.html" class="btn-optimizar ${currentPage === 'dashboard' ? 'active-nav' : ''}">dashboard</a>`;
+        html += `<a href="requerimientos.html" class="btn-optimizar ${currentPage === 'requerimientos' ? 'active-nav' : ''}">requerimientos</a>`;
     }
 
     // El perfil es accesible a todos los logueados

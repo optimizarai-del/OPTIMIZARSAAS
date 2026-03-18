@@ -60,6 +60,19 @@ function initializeDatabase() {
       seedDefaultUsers();
     }
   });
+
+  db.run(`CREATE TABLE IF NOT EXISTS requirements (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    area TEXT NOT NULL,
+    tarea TEXT NOT NULL,
+    comoSeRealiza TEXT,
+    prioridad TEXT NOT NULL DEFAULT 'media',
+    tiempoManual TEXT,
+    createdAt TEXT
+  )`, (err) => {
+    if (err) console.error("Error creating requirements table:", err.message);
+  });
 }
 
 function seedDefaultUsers() {
@@ -281,6 +294,46 @@ app.delete('/api/users/:id', (req, res) => {
       if (err) return res.status(500).json({ error: err.message });
       res.json({ success: true });
     });
+  });
+});
+
+// =========================================================================
+// REQUIREMENTS ENDPOINTS
+// =========================================================================
+
+// GET requirements for a user (sorted by priority)
+app.get('/api/requirements', (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ error: 'userId requerido.' });
+  const q = `SELECT * FROM requirements WHERE userId = ?
+    ORDER BY CASE prioridad WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 4 END, createdAt DESC`;
+  db.all(q, [userId], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+// POST create requirement
+app.post('/api/requirements', (req, res) => {
+  const { userId, area, tarea, comoSeRealiza, prioridad, tiempoManual } = req.body;
+  if (!userId || !area || !tarea || !prioridad) {
+    return res.status(400).json({ success: false, message: 'Campos requeridos faltantes.' });
+  }
+  const id = Date.now().toString() + Math.random().toString(36).substring(7);
+  const q = `INSERT INTO requirements (id, userId, area, tarea, comoSeRealiza, prioridad, tiempoManual, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  db.run(q, [id, userId, area, tarea, comoSeRealiza || '', prioridad, tiempoManual || '', new Date().toISOString()], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true, requirement: { id, userId, area, tarea, comoSeRealiza, prioridad, tiempoManual } });
+  });
+});
+
+// DELETE requirement
+app.delete('/api/requirements/:id', (req, res) => {
+  const { id } = req.params;
+  db.run("DELETE FROM requirements WHERE id = ?", [id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true });
   });
 });
 

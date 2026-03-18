@@ -40,7 +40,14 @@ h1 {
 
 h2 {
     font-weight: 700;
-    color: var(--accent-pink);
+    color: var(--text-primary);
+    text-transform: capitalize;
+}
+
+h3 {
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: capitalize;
 }
 
 p, span, div {
@@ -233,7 +240,6 @@ label, .stat-label, .input-label {
 }
 
 .chat-header h2 {
-    text-transform: lowercase;
     font-size: 1.5rem;
 }
 
