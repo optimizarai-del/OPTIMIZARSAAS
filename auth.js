@@ -146,6 +146,36 @@ async function updateUser(userId, updates) {
     }
 }
 
+// Agregar miembro a un proyecto existente (no crea proyecto nuevo)
+async function addProjectMember(projectId, name, email, password) {
+    try {
+        const response = await fetch(`/api/projects/${projectId}/members`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, password })
+        });
+        const data = await response.json();
+        if (data.success) return { success: true, member: data.member };
+        else return { success: false, message: data.message || 'Error al agregar miembro' };
+    } catch(e) {
+        console.error(e);
+        return { success: false, message: 'Error de red' };
+    }
+}
+
+// Eliminar miembro de un proyecto (solo miembros no-propietarios)
+async function removeProjectMember(projectId, userId) {
+    try {
+        const response = await fetch(`/api/projects/${projectId}/members/${userId}`, { method: 'DELETE' });
+        const data = await response.json();
+        if (data.success) return { success: true };
+        else return { success: false, message: data.message || 'Error al eliminar miembro' };
+    } catch(e) {
+        console.error(e);
+        return { success: false, message: 'Error de red' };
+    }
+}
+
 async function deleteUser(userId) {
     try {
         const response = await fetch(`/api/users/${userId}`, {

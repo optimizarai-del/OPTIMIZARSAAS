@@ -1,390 +1,395 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
-const fs = require('fs');
 const https = require('https');
 const http = require('http');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 80;
 
-// Middleware
+// =========================================================================
+// SUPABASE CLIENT (usa service key para bypass de RLS)
+// Variables de entorno requeridas en EasyPanel:
+//   SUPABASE_URL          = https://xxxx.supabase.co
+//   SUPABASE_SERVICE_KEY  = clave de rol "service_role"
+// =========================================================================
+const supabase = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || ''
+);
+
 app.use(cors());
 app.use(bodyParser.json());
-
-// Sirve el frontend estático
 app.use(express.static(path.join(__dirname, '')));
 
 // =========================================================================
-// DATABASE SETUP (SQLite)
+// HELPER: mapUser
+// Fusiona los campos del proyecto (project) dentro del objeto usuario
+// para mantener compatibilidad con el frontend existente.
 // =========================================================================
-const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir);
-}
-
-const db = new sqlite3.Database(path.join(dataDir, 'database.sqlite'), (err) => {
-  if (err) {
-    console.error('Error opening database:', err.message);
-  } else {
-    console.log('Connected to the SQLite database.');
-    initializeDatabase();
-  }
-});
-
-function initializeDatabase() {
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL,
-    allowedPages TEXT,
-    companyName TEXT,
-    csvUrl TEXT,
-    webhookUrl TEXT,
-    crmUrl TEXT,
-    agenteExternoUrl TEXT,
-    specialButtons TEXT,
-    actionButtons TEXT,
-    customCharts TEXT,
-    requiresPasswordChange INTEGER DEFAULT 0,
-    createdAt TEXT
-  )`, (err) => {
-    if (err) console.error("Error creating tables:", err.message);
-    else {
-      db.run(`ALTER TABLE users ADD COLUMN actionButtons TEXT`, () => {});
-      db.run(`ALTER TABLE users ADD COLUMN customCharts TEXT`, () => {});
-      seedDefaultUsers();
-    }
-  });
-
-  db.run(`CREATE TABLE IF NOT EXISTS requirements (
-    id TEXT PRIMARY KEY,
-    userId TEXT NOT NULL,
-    area TEXT NOT NULL,
-    tarea TEXT NOT NULL,
-    comoSeRealiza TEXT,
-    prioridad TEXT NOT NULL DEFAULT 'media',
-    tiempoManual TEXT,
-    createdAt TEXT
-  )`, (err) => {
-    if (err) console.error("Error creating requirements table:", err.message);
-  });
-
-  db.run(`CREATE TABLE IF NOT EXISTS req_comments (
-    id TEXT PRIMARY KEY,
-    requirementId TEXT NOT NULL,
-    adminId TEXT NOT NULL,
-    adminName TEXT NOT NULL,
-    text TEXT NOT NULL,
-    createdAt TEXT
-  )`, (err) => {
-    if (err) console.error("Error creating req_comments table:", err.message);
-  });
-}
-
-function seedDefaultUsers() {
-  db.get("SELECT COUNT(*) as count FROM users WHERE role = 'admin'", (err, row) => {
-    if (!err && row.count === 0) {
-      const adminId = Date.now().toString() + "-admin";
-      const adminQuery = `INSERT INTO users (id, name, email, password, role, allowedPages, createdAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?)`;
-      db.run(adminQuery, [adminId, 'Admin Principal', 'admin@optimizar-ia.com', 'admin', 'admin', '["all"]', new Date().toISOString()]);
-
-      const userId = Date.now().toString() + "-user";
-      const userQuery = `INSERT INTO users (id, name, companyName, email, password, role, allowedPages, csvUrl, webhookUrl, requiresPasswordChange, createdAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
-      db.run(userQuery, [
-        userId,
-        'Gabriel Riesco',
-        'Gabriel Riesco IA',
-        'gabrielriescoia@gmail.com',
-        'Optimizar-26',
-        'user',
-        '["dashboard"]',
-        'https://docs.google.com/spreadsheets/d/e/2PACX-1vRylHtAg4p3VGtm4pKxMUgTyLyGN9CLGv4k1dDFRzKozzRPJZBlStGXJrjHL-gId5QPsV7IZRO-nPR3/pub?output=csv',
-        'https://n8n.optimizar-ia.com/webhook/e69975da-3359-43cf-9970-f60ef990f726',
-        0,
-        new Date().toISOString()
-      ]);
-      console.log("Default users created in DB");
-    }
-  });
+function mapUser(u) {
+  const p = u.projects || {};
+  return {
+    id:                      u.id,
+    name:                    u.name,
+    email:                   u.email,
+    password:                u.password,
+    role:                    u.role,
+    projectId:               u.project_id               || null,
+    isProjectOwner:          u.is_project_owner         || false,
+    requiresPasswordChange:  u.requires_password_change || false,
+    createdAt:               u.created_at,
+    // Campos del proyecto (compartidos por todos los miembros):
+    companyName:      p.name               || '',
+    csvUrl:           p.csv_url            || '',
+    webhookUrl:       p.webhook_url        || '',
+    crmUrl:           p.crm_url            || '',
+    agenteExternoUrl: p.agente_externo_url || '',
+    specialButtons:   p.special_buttons    || [],
+    actionButtons:    p.action_buttons     || [],
+    customCharts:     p.custom_charts      || [],
+    allowedPages:     u.role === 'admin' ? ['all'] : ['dashboard'],
+  };
 }
 
 // =========================================================================
-// [FIX BUG 2] PROXY CSV — Evita el bloqueo CORS de Google Sheets
-// El frontend llama a /api/proxy-csv?url=... y el servidor descarga el CSV
-// server-side (sin restricciones CORS) y lo reenvía al cliente.
+// PROXY CSV — Evita bloqueo CORS de Google Sheets
 // =========================================================================
 app.get('/api/proxy-csv', (req, res) => {
   const targetUrl = req.query.url;
+  if (!targetUrl) return res.status(400).json({ error: 'Parámetro "url" requerido.' });
 
-  if (!targetUrl) {
-    return res.status(400).json({ error: 'Parámetro "url" requerido.' });
-  }
-
-  // Validación de seguridad: solo permitir Google Sheets y URLs https
   const allowedHosts = ['docs.google.com', 'spreadsheets.google.com'];
   let parsedUrl;
-  try {
-    parsedUrl = new URL(targetUrl);
-  } catch (e) {
-    return res.status(400).json({ error: 'URL inválida.' });
-  }
-
-  if (!allowedHosts.includes(parsedUrl.hostname)) {
-    return res.status(403).json({ error: 'Host no permitido. Solo se permiten URLs de Google Sheets.' });
-  }
+  try { parsedUrl = new URL(targetUrl); } catch (e) { return res.status(400).json({ error: 'URL inválida.' }); }
+  if (!allowedHosts.includes(parsedUrl.hostname)) return res.status(403).json({ error: 'Host no permitido.' });
 
   const requester = parsedUrl.protocol === 'https:' ? https : http;
-
   const proxyReq = requester.get(targetUrl, (proxyRes) => {
-    // Seguir redirecciones manualmente (Google Sheets redirige)
     if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
-      const redirectUrl = proxyRes.headers.location;
-      const redirectRequester = redirectUrl.startsWith('https') ? https : http;
-      redirectRequester.get(redirectUrl, (redirectRes) => {
+      const redir = proxyRes.headers.location;
+      const rReq = (redir.startsWith('https') ? https : http).get(redir, (rRes) => {
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Cache-Control', 'no-cache');
-        redirectRes.pipe(res);
-      }).on('error', (err) => {
-        console.error('Error en redirección proxy CSV:', err.message);
-        res.status(500).json({ error: 'Error al seguir redirección del CSV.' });
+        rRes.pipe(res);
       });
+      rReq.on('error', () => res.status(500).json({ error: 'Error en redirección.' }));
       return;
     }
-
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache');
     proxyRes.pipe(res);
   });
-
-  proxyReq.on('error', (err) => {
-    console.error('Error en proxy CSV:', err.message);
-    res.status(500).json({ error: 'No se pudo descargar el CSV.' });
-  });
-
-  proxyReq.setTimeout(15000, () => {
-    proxyReq.destroy();
-    res.status(504).json({ error: 'Timeout al descargar el CSV.' });
-  });
+  proxyReq.on('error', () => res.status(500).json({ error: 'No se pudo descargar el CSV.' }));
+  proxyReq.setTimeout(15000, () => { proxyReq.destroy(); res.status(504).json({ error: 'Timeout.' }); });
 });
 
 // =========================================================================
-// API ENDPOINTS
+// USERS API (compatible con frontend existente)
 // =========================================================================
 
-// 1. GET ALL USERS
-app.get('/api/users', (req, res) => {
-  db.all("SELECT * FROM users", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    const parsedRows = rows.map(r => ({
-      ...r,
-      allowedPages: r.allowedPages ? JSON.parse(r.allowedPages) : [],
-      specialButtons: r.specialButtons ? JSON.parse(r.specialButtons) : [],
-      actionButtons: r.actionButtons ? JSON.parse(r.actionButtons) : [],
-      customCharts: r.customCharts ? JSON.parse(r.customCharts) : [],
-      requiresPasswordChange: r.requiresPasswordChange === 1
-    }));
-    res.json(parsedRows);
-  });
+// 1. GET ALL USERS (con datos del proyecto fusionados)
+app.get('/api/users', async (req, res) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*, projects(*)');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json((data || []).map(mapUser));
 });
 
 // 2. LOGIN
-app.post('/api/login', (req, res) => {
+app.post('/api/login', async (req, res) => {
   const { email, password } = req.body;
-  db.get("SELECT * FROM users WHERE email = ? AND password = ?", [email, password], (err, user) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (!user) return res.status(401).json({ success: false, message: 'Correo o contraseña incorrectos.' });
-
-    const sessionData = {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-      companyName: user.companyName || '',
-      allowedPages: user.allowedPages ? JSON.parse(user.allowedPages) : [],
-      csvUrl: user.csvUrl || '',
-      webhookUrl: user.webhookUrl || '',
-      crmUrl: user.crmUrl || '',
-      agenteExternoUrl: user.agenteExternoUrl || '',
-      specialButtons: user.specialButtons ? JSON.parse(user.specialButtons) : [],
-      actionButtons: user.actionButtons ? JSON.parse(user.actionButtons) : [],
-      customCharts: user.customCharts ? JSON.parse(user.customCharts) : [],
-      requiresPasswordChange: user.requiresPasswordChange === 1,
-      loginTime: new Date().toISOString()
-    };
-
-    res.json({ success: true, session: sessionData });
-  });
+  const { data, error } = await supabase
+    .from('users')
+    .select('*, projects(*)')
+    .eq('email', email)
+    .eq('password', password)
+    .single();
+  if (error || !data) return res.status(401).json({ success: false, message: 'Correo o contraseña incorrectos.' });
+  res.json({ success: true, session: mapUser(data) });
 });
 
 // 3. CREATE USER
-app.post('/api/users', (req, res) => {
+//   - role='user' sin projectId → crea proyecto nuevo + usuario propietario
+//   - role='user' con projectId  → agrega miembro a proyecto existente
+//   - role='admin'               → crea admin sin proyecto
+app.post('/api/users', async (req, res) => {
   const user = req.body;
   const id = Date.now().toString() + Math.random().toString(36).substring(7);
 
-  db.get("SELECT id FROM users WHERE email = ?", [user.email], (err, existing) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (existing) return res.status(400).json({ success: false, message: 'El correo ya está registrado.' });
+  const { data: existing } = await supabase.from('users').select('id').eq('email', user.email).single();
+  if (existing) return res.status(400).json({ success: false, message: 'El correo ya está registrado.' });
 
-    const q = `INSERT INTO users
-      (id, name, email, password, role, allowedPages, companyName, csvUrl, webhookUrl, crmUrl, agenteExternoUrl, specialButtons, actionButtons, customCharts, requiresPasswordChange, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+  let projectId = user.projectId || null;
 
-    const params = [
-      id,
-      user.name,
-      user.email,
-      user.password,
-      user.role,
-      JSON.stringify(user.allowedPages || []),
-      user.companyName || '',
-      user.csvUrl || '',
-      user.webhookUrl || '',
-      user.crmUrl || '',
-      user.agenteExternoUrl || '',
-      JSON.stringify(user.specialButtons || []),
-      JSON.stringify(user.actionButtons || []),
-      JSON.stringify(user.customCharts || []),
-      user.requiresPasswordChange ? 1 : 0,
-      new Date().toISOString()
-    ];
+  if (user.role === 'user' && !projectId) {
+    // Crear proyecto primero
+    const { data: project, error: projErr } = await supabase
+      .from('projects')
+      .insert({
+        name:               user.companyName        || user.name,
+        csv_url:            user.csvUrl             || '',
+        webhook_url:        user.webhookUrl         || '',
+        crm_url:            user.crmUrl             || '',
+        agente_externo_url: user.agenteExternoUrl   || '',
+        special_buttons:    user.specialButtons     || [],
+        action_buttons:     user.actionButtons      || [],
+        custom_charts:      user.customCharts       || [],
+      })
+      .select()
+      .single();
+    if (projErr) return res.status(500).json({ error: projErr.message });
+    projectId = project.id;
+  }
 
-    db.run(q, params, function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ success: true, user: { id, ...user } });
-    });
+  const { error } = await supabase.from('users').insert({
+    id,
+    name:                    user.name,
+    email:                   user.email,
+    password:                user.password,
+    role:                    user.role,
+    project_id:              projectId,
+    is_project_owner:        user.role === 'user' && !user.projectId,
+    requires_password_change: user.requiresPasswordChange || false,
   });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, user: { id, ...user, projectId } });
 });
 
 // 4. UPDATE USER
-app.put('/api/users/:id', (req, res) => {
+//   - Campos de usuario (name, email, password) → tabla users
+//   - Campos de proyecto (csvUrl, companyName, etc.) → tabla projects
+app.put('/api/users/:id', async (req, res) => {
   const { id } = req.params;
   const updates = req.body;
 
-  let updateFields = [];
-  let params = [];
+  const { data: currentUser } = await supabase.from('users').select('project_id, role').eq('id', id).single();
+  const userUpdates    = {};
+  const projectUpdates = {};
 
-  for (let key in updates) {
-    if (key === 'id') continue;
-    updateFields.push(`${key} = ?`);
-    let value = updates[key];
-    if (['allowedPages', 'specialButtons', 'actionButtons', 'customCharts'].includes(key)) {
-      value = JSON.stringify(value);
-    } else if (key === 'requiresPasswordChange') {
-      value = value ? 1 : 0;
-    }
-    params.push(value);
+  for (const key in updates) {
+    if (key === 'id' || key === 'projectId') continue;
+    if (key === 'name')     userUpdates.name     = updates[key];
+    if (key === 'email')    userUpdates.email    = updates[key];
+    if (key === 'password') userUpdates.password = updates[key];
+    if (key === 'requiresPasswordChange') userUpdates.requires_password_change = updates[key];
+    if (key === 'companyName')       projectUpdates.name               = updates[key];
+    if (key === 'csvUrl')            projectUpdates.csv_url            = updates[key];
+    if (key === 'webhookUrl')        projectUpdates.webhook_url        = updates[key];
+    if (key === 'crmUrl')            projectUpdates.crm_url            = updates[key];
+    if (key === 'agenteExternoUrl')  projectUpdates.agente_externo_url = updates[key];
+    if (key === 'specialButtons')    projectUpdates.special_buttons    = updates[key];
+    if (key === 'actionButtons')     projectUpdates.action_buttons     = updates[key];
+    if (key === 'customCharts')      projectUpdates.custom_charts      = updates[key];
   }
 
-  if (updateFields.length === 0) return res.json({ success: true });
+  if (Object.keys(userUpdates).length > 0) {
+    const { error } = await supabase.from('users').update(userUpdates).eq('id', id);
+    if (error) return res.status(500).json({ error: error.message });
+  }
+  if (Object.keys(projectUpdates).length > 0 && currentUser?.project_id) {
+    const { error } = await supabase.from('projects').update(projectUpdates).eq('id', currentUser.project_id);
+    if (error) return res.status(500).json({ error: error.message });
+  }
 
-  params.push(id);
-  const q = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
-
-  db.run(q, params, function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, updated: this.changes });
-  });
+  res.json({ success: true });
 });
 
 // 5. DELETE USER
-app.delete('/api/users/:id', (req, res) => {
+//   - Si era propietario: reasigna o elimina el proyecto
+app.delete('/api/users/:id', async (req, res) => {
   const { id } = req.params;
-  db.all("SELECT id FROM users WHERE role = 'admin'", [], (err, admins) => {
-    if (err) return res.status(500).json({ error: err.message });
-    if (admins.length <= 1 && admins.find(a => a.id === id)) {
-      return res.status(400).json({ success: false, message: "No puedes eliminar el último administrador." });
-    }
-    db.run("DELETE FROM users WHERE id = ?", [id], function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ success: true });
-    });
-  });
-});
 
-// =========================================================================
-// REQUIREMENTS ENDPOINTS
-// =========================================================================
-
-// GET requirements for a user (sorted by priority)
-app.get('/api/requirements', (req, res) => {
-  const { userId } = req.query;
-  if (!userId) return res.status(400).json({ error: 'userId requerido.' });
-  const q = `SELECT * FROM requirements WHERE userId = ?
-    ORDER BY CASE prioridad WHEN 'alta' THEN 1 WHEN 'media' THEN 2 WHEN 'baja' THEN 3 ELSE 4 END, createdAt DESC`;
-  db.all(q, [userId], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
-
-// POST create requirement
-app.post('/api/requirements', (req, res) => {
-  const { userId, area, tarea, comoSeRealiza, prioridad, tiempoManual } = req.body;
-  if (!userId || !area || !tarea || !prioridad) {
-    return res.status(400).json({ success: false, message: 'Campos requeridos faltantes.' });
+  const { data: admins } = await supabase.from('users').select('id').eq('role', 'admin');
+  if (admins && admins.length <= 1 && admins.find(a => a.id === id)) {
+    return res.status(400).json({ success: false, message: 'No puedes eliminar el último administrador.' });
   }
+
+  const { data: user } = await supabase.from('users').select('project_id, is_project_owner').eq('id', id).single();
+  const { error } = await supabase.from('users').delete().eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+
+  if (user?.is_project_owner && user?.project_id) {
+    const { data: remaining } = await supabase.from('users').select('id').eq('project_id', user.project_id);
+    if (!remaining || remaining.length === 0) {
+      await supabase.from('projects').delete().eq('id', user.project_id);
+    } else {
+      await supabase.from('users').update({ is_project_owner: true }).eq('id', remaining[0].id);
+    }
+  }
+
+  res.json({ success: true });
+});
+
+// =========================================================================
+// PROJECT MEMBERS API
+// =========================================================================
+
+// GET miembros de un proyecto
+app.get('/api/projects/:projectId/members', async (req, res) => {
+  const { projectId } = req.params;
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, name, email, role, is_project_owner, requires_password_change, created_at')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+
+// POST agregar miembro a proyecto existente
+app.post('/api/projects/:projectId/members', async (req, res) => {
+  const { projectId } = req.params;
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) return res.status(400).json({ success: false, message: 'Nombre, correo y contraseña son requeridos.' });
+
+  const { data: existing } = await supabase.from('users').select('id').eq('email', email).single();
+  if (existing) return res.status(400).json({ success: false, message: 'El correo ya está registrado.' });
+
   const id = Date.now().toString() + Math.random().toString(36).substring(7);
-  const q = `INSERT INTO requirements (id, userId, area, tarea, comoSeRealiza, prioridad, tiempoManual, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-  db.run(q, [id, userId, area, tarea, comoSeRealiza || '', prioridad, tiempoManual || '', new Date().toISOString()], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, requirement: { id, userId, area, tarea, comoSeRealiza, prioridad, tiempoManual } });
+  const { error } = await supabase.from('users').insert({
+    id, name, email, password,
+    role: 'user',
+    project_id: projectId,
+    is_project_owner: false,
+    requires_password_change: true,
   });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, member: { id, name, email } });
 });
 
-// DELETE requirement
-app.delete('/api/requirements/:id', (req, res) => {
+// DELETE remover miembro de un proyecto (no puede ser el propietario)
+app.delete('/api/projects/:projectId/members/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const { data: user } = await supabase.from('users').select('is_project_owner').eq('id', userId).single();
+  if (user?.is_project_owner) {
+    return res.status(400).json({ success: false, message: 'No puedes eliminar al responsable del proyecto. Eliminalo desde "Borrar proyecto".' });
+  }
+  const { error } = await supabase.from('users').delete().eq('id', userId);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+// =========================================================================
+// REQUIREMENTS API
+// =========================================================================
+
+app.get('/api/requirements', async (req, res) => {
+  const { projectId, userId } = req.query;
+  let finalProjectId = projectId;
+
+  if (!finalProjectId && userId) {
+    const { data: user } = await supabase.from('users').select('project_id').eq('id', userId).single();
+    finalProjectId = user?.project_id;
+  }
+  if (!finalProjectId) return res.json([]);
+
+  const { data, error } = await supabase
+    .from('requirements')
+    .select('*')
+    .eq('project_id', finalProjectId);
+  if (error) return res.status(500).json({ error: error.message });
+
+  const priority = { alta: 1, media: 2, baja: 3 };
+  const sorted = (data || []).sort((a, b) =>
+    (priority[a.prioridad] || 4) - (priority[b.prioridad] || 4) ||
+    new Date(b.created_at) - new Date(a.created_at)
+  );
+
+  res.json(sorted.map(r => ({
+    id:            r.id,
+    projectId:     r.project_id,
+    userId:        r.user_id,
+    userName:      r.user_name,
+    area:          r.area,
+    tarea:         r.tarea,
+    comoSeRealiza: r.como_se_realiza,
+    prioridad:     r.prioridad,
+    tiempoManual:  r.tiempo_manual,
+    createdAt:     r.created_at,
+  })));
+});
+
+app.post('/api/requirements', async (req, res) => {
+  const { userId, projectId, area, tarea, comoSeRealiza, prioridad, tiempoManual, userName } = req.body;
+  let finalProjectId = projectId;
+  let finalUserName  = userName;
+
+  if (!finalProjectId || !finalUserName) {
+    const { data: user } = await supabase.from('users').select('project_id, name').eq('id', userId).single();
+    if (!finalProjectId) finalProjectId = user?.project_id;
+    if (!finalUserName)  finalUserName  = user?.name || 'Usuario';
+  }
+
+  if (!finalProjectId || !area || !tarea || !prioridad) {
+    return res.status(400).json({ success: false, message: 'Faltan campos requeridos.' });
+  }
+
+  const id = Date.now().toString() + Math.random().toString(36).substring(7);
+  const { error } = await supabase.from('requirements').insert({
+    id,
+    project_id:      finalProjectId,
+    user_id:         userId  || 'unknown',
+    user_name:       finalUserName,
+    area, tarea,
+    como_se_realiza: comoSeRealiza || '',
+    prioridad,
+    tiempo_manual:   tiempoManual  || '',
+  });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, requirement: { id, projectId: finalProjectId, area, tarea, prioridad } });
+});
+
+app.delete('/api/requirements/:id', async (req, res) => {
   const { id } = req.params;
-  db.run("DELETE FROM requirements WHERE id = ?", [id], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    db.run("DELETE FROM req_comments WHERE requirementId = ?", [id], () => {});
-    res.json({ success: true });
-  });
+  await supabase.from('req_comments').delete().eq('requirement_id', id);
+  const { error } = await supabase.from('requirements').delete().eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
 });
 
 // =========================================================================
-// COMMENTS ENDPOINTS
+// COMMENTS API
 // =========================================================================
 
-// GET comments for a requirement
-app.get('/api/comments', (req, res) => {
+app.get('/api/comments', async (req, res) => {
   const { requirementId } = req.query;
   if (!requirementId) return res.status(400).json({ error: 'requirementId requerido.' });
-  db.all("SELECT * FROM req_comments WHERE requirementId = ? ORDER BY createdAt ASC", [requirementId], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
+  const { data, error } = await supabase
+    .from('req_comments')
+    .select('*')
+    .eq('requirement_id', requirementId)
+    .order('created_at', { ascending: true });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json((data || []).map(c => ({
+    id:            c.id,
+    requirementId: c.requirement_id,
+    adminId:       c.admin_id,
+    adminName:     c.admin_name,
+    text:          c.text,
+    createdAt:     c.created_at,
+  })));
 });
 
-// POST add comment
-app.post('/api/comments', (req, res) => {
+app.post('/api/comments', async (req, res) => {
   const { requirementId, adminId, adminName, text } = req.body;
-  if (!requirementId || !adminId || !text) {
-    return res.status(400).json({ success: false, message: 'Campos requeridos faltantes.' });
-  }
+  if (!requirementId || !adminId || !text) return res.status(400).json({ success: false, message: 'Campos requeridos.' });
   const id = Date.now().toString() + Math.random().toString(36).substring(7);
-  const q = `INSERT INTO req_comments (id, requirementId, adminId, adminName, text, createdAt) VALUES (?, ?, ?, ?, ?, ?)`;
-  db.run(q, [id, requirementId, adminId, adminName, text, new Date().toISOString()], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true, comment: { id, requirementId, adminId, adminName, text, createdAt: new Date().toISOString() } });
+  const { error } = await supabase.from('req_comments').insert({
+    id, requirement_id: requirementId, admin_id: adminId, admin_name: adminName, text,
   });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, comment: { id, requirementId, adminId, adminName, text, createdAt: new Date().toISOString() } });
 });
 
-// Fallback: redirigir rutas desconocidas a index.html
+// Fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// =========================================================================
-// START SERVER
-// =========================================================================
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Optimizar Server is running on port ${PORT} bound to 0.0.0.0`);
+  console.log(`Optimizar Server running on port ${PORT}`);
 });

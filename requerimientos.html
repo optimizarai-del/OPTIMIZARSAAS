@@ -329,6 +329,7 @@
         const targetUserId = urlParams.get('userId');
 
         // userId que se usa para cargar requerimientos
+        // Para clientes: usa su propio userId (el servidor resuelve al projectId)
         const viewUserId = isAdmin && targetUserId ? targetUserId : (session ? session.userId : null);
 
         let requirements = [];
@@ -484,6 +485,10 @@
                         <label>Fecha De Carga</label>
                         <p>${new Date(r.createdAt).toLocaleDateString('es-AR', {day:'2-digit',month:'2-digit',year:'numeric'})}</p>
                     </div>
+                    ${r.userName ? `<div class="req-field">
+                        <label>Agregado Por</label>
+                        <p>${escapeHtml(r.userName)}</p>
+                    </div>` : ''}
                 </div>
                 ${commentsHtml}
             `;
@@ -606,6 +611,7 @@
 
             const payload = {
                 userId:        viewUserId,
+                userName:      session ? session.name : 'Usuario',
                 area:          document.getElementById('req-area').value.trim(),
                 tarea:         document.getElementById('req-tarea').value.trim(),
                 comoSeRealiza: document.getElementById('req-como').value.trim(),

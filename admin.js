@@ -438,25 +438,142 @@ async function renderClientsTable() {
   const tbody = document.getElementById('clients-table-body');
   if (!tbody) return;
   tbody.innerHTML = '';
+
+  // Agrupar por projectId: una fila por proyecto
+  const projectsMap = {};
   clients.forEach(client => {
-    const tr = document.createElement('tr');
-    tr.className = 'clickable-row';
-    let crmBtn = `<span style="opacity:0.4;font-size:0.8rem;">Sin CRM</span>`;
-    if (client.crmUrl) {
-      crmBtn = `<a href="${client.crmUrl}" target="_blank" class="btn-crm" onclick="event.stopPropagation()">Abrir CRM</a>`;
+    const pid = client.projectId || ('noproject-' + client.id);
+    if (!projectsMap[pid]) {
+      projectsMap[pid] = { projectId: pid, companyName: client.companyName || client.name, crmUrl: client.crmUrl || '', owner: null, members: [] };
     }
-    const displayName = client.companyName ? `${client.companyName} (${client.name})` : client.name;
+    if (client.isProjectOwner) projectsMap[pid].owner = client;
+    projectsMap[pid].members.push(client);
+  });
+
+  Object.values(projectsMap).forEach(project => {
+    const owner = project.owner || project.members[0];
+    if (!owner) return;
+    const memberCount = project.members.length;
+    const crmBtn = project.crmUrl
+      ? `<a href="${escapeAttr(project.crmUrl)}" target="_blank" class="btn-crm" onclick="event.stopPropagation()">Abrir CRM</a>`
+      : `<span style="opacity:0.4;font-size:0.8rem;">Sin CRM</span>`;
+
+    const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td onclick="viewClientDashboard('${client.id}')" style="font-weight:600;color:var(--accent-blue);">${displayName}</td>
-      <td onclick="viewClientDashboard('${client.id}')">${client.email}</td>
+      <td onclick="viewClientDashboard('${owner.id}')" style="font-weight:600;color:var(--accent-blue);cursor:pointer;">${escapeHtml(project.companyName)}</td>
+      <td onclick="viewClientDashboard('${owner.id}')" style="cursor:pointer;">${escapeHtml(owner.name)} <span style="font-size:0.76rem;opacity:0.55;">&lt;${escapeHtml(owner.email)}&gt;</span></td>
+      <td>
+        <button onclick="openMembersModal('${escapeAttr(project.projectId)}','${escapeAttr(project.companyName)}')"
+          class="btn-optimizar" style="padding:4px 14px;font-size:0.78rem;background:rgba(56,189,248,0.1);border-color:rgba(56,189,248,0.35);">
+          ${memberCount} miembro${memberCount !== 1 ? 's' : ''}
+        </button>
+      </td>
       <td>${crmBtn}</td>
       <td>
-        <button onclick="editUserRecord('${client.id}')" class="btn-optimizar" style="padding:5px 15px;font-size:0.8rem;">Editar</button>
-        <button onclick="removeUserRecord('${client.id}')" class="btn-optimizar" style="padding:5px 15px;font-size:0.8rem;background:rgba(244,114,182,0.1);border-color:var(--accent-pink);margin-left:5px;">Borrar</button>
+        <button onclick="viewClientDashboard('${owner.id}')" class="btn-optimizar" style="padding:5px 10px;font-size:0.78rem;">dashboard</button>
+        <button onclick="viewClientReqs('${owner.id}')" class="btn-optimizar" style="padding:5px 10px;font-size:0.78rem;background:rgba(167,139,250,0.1);border-color:#a78bfa;margin-left:4px;">reqs</button>
+        <button onclick="editUserRecord('${owner.id}')" class="btn-optimizar" style="padding:5px 10px;font-size:0.78rem;margin-left:4px;">editar</button>
+        <button onclick="removeUserRecord('${owner.id}')" class="btn-optimizar" style="padding:5px 10px;font-size:0.78rem;background:rgba(244,114,182,0.1);border-color:var(--accent-pink);margin-left:4px;">borrar</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+function viewClientReqs(clientId) {
+  window.location.href = `requerimientos.html?userId=${clientId}`;
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function escapeAttr(str) {
+  return String(str || '').replace(/'/g,"&#39;").replace(/"/g,'&quot;');
+}
+
+// ==========================================================================
+// MEMBERS MODAL
+// ==========================================================================
+
+var _membersProjectId = null;
+
+async function openMembersModal(projectId, projectName) {
+  _membersProjectId = projectId;
+  document.getElementById('members-modal-title').textContent = 'Miembros — ' + projectName;
+  document.getElementById('member-name').value = '';
+  document.getElementById('member-email').value = '';
+  document.getElementById('member-password').value = 'Optimizar123';
+  document.getElementById('member-error').style.display = 'none';
+  document.getElementById('members-modal').style.display = 'flex';
+  await loadMembersList(projectId);
+}
+
+function closeMembersModal() {
+  document.getElementById('members-modal').style.display = 'none';
+  _membersProjectId = null;
+}
+
+async function loadMembersList(projectId) {
+  var container = document.getElementById('members-list');
+  container.innerHTML = '<p style="font-size:0.85rem;opacity:0.5;">Cargando...</p>';
+  try {
+    var res = await fetch('/api/projects/' + projectId + '/members');
+    var members = await res.json();
+    if (!members.length) { container.innerHTML = '<p style="font-size:0.85rem;opacity:0.5;">Sin miembros aún.</p>'; return; }
+    container.innerHTML = members.map(function(m) {
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;margin-bottom:8px;">
+          <div>
+            <p style="margin:0;font-size:0.9rem;font-weight:600;color:#fff;">${escapeHtml(m.name)}
+              ${m.is_project_owner ? '<span style="font-size:0.7rem;background:rgba(251,191,36,0.2);color:#fbbf24;border:1px solid rgba(251,191,36,0.4);padding:1px 7px;border-radius:20px;margin-left:6px;">responsable</span>' : ''}
+            </p>
+            <p style="margin:2px 0 0;font-size:0.78rem;color:rgba(255,255,255,0.5);">${escapeHtml(m.email)}</p>
+          </div>
+          ${!m.is_project_owner ? `<button onclick="removeMemberFromProject('${escapeAttr(projectId)}','${m.id}')"
+            style="background:rgba(244,114,182,0.1);border:1px solid rgba(244,114,182,0.4);color:#fca5a5;border-radius:8px;padding:4px 12px;font-size:0.78rem;cursor:pointer;font-family:inherit;">eliminar</button>` : ''}
+        </div>`;
+    }).join('');
+  } catch(e) {
+    container.innerHTML = '<p style="font-size:0.85rem;color:#fca5a5;">Error cargando miembros.</p>';
+  }
+}
+
+async function submitAddMember() {
+  if (!_membersProjectId) return;
+  var name     = document.getElementById('member-name').value.trim();
+  var email    = document.getElementById('member-email').value.trim();
+  var password = document.getElementById('member-password').value.trim();
+  var errEl    = document.getElementById('member-error');
+  errEl.style.display = 'none';
+  if (!name || !email || !password) { errEl.textContent = 'Completá nombre, correo y contraseña.'; errEl.style.display = 'block'; return; }
+
+  var btn = document.getElementById('btn-add-member');
+  btn.textContent = 'agregando...'; btn.disabled = true;
+
+  var res = await addProjectMember(_membersProjectId, name, email, password);
+  btn.textContent = '+ agregar miembro'; btn.disabled = false;
+
+  if (res.success) {
+    document.getElementById('member-name').value = '';
+    document.getElementById('member-email').value = '';
+    document.getElementById('member-password').value = 'Optimizar123';
+    await loadMembersList(_membersProjectId);
+    await renderClientsTable();
+  } else {
+    errEl.textContent = res.message || 'Error al agregar miembro.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function removeMemberFromProject(projectId, userId) {
+  if (!confirm('¿Eliminar este miembro del proyecto?')) return;
+  var res = await removeProjectMember(projectId, userId);
+  if (res.success) {
+    await loadMembersList(projectId);
+    await renderClientsTable();
+  } else {
+    alert(res.message || 'Error al eliminar miembro.');
+  }
 }
 
 // ==========================================================================
