@@ -212,7 +212,7 @@ function renderAuthenticatedNav(currentPage) {
         html += `<a href="requerimientos.html" class="btn-optimizar ${currentPage === 'requerimientos' ? 'active-nav' : ''}">requerimientos</a>`;
     }
 
-    // Bell notification (all logged-in users)
+    // Bell notification (all logged-in users) — dropdown se inyecta en body para evitar stacking context
     html += `
       <div class="notif-bell-wrap" id="notif-bell-wrap">
         <button class="notif-bell-btn" id="notif-bell-btn" onclick="toggleNotifDropdown(event)" title="Notificaciones">
@@ -222,13 +222,6 @@ function renderAuthenticatedNav(currentPage) {
           </svg>
           <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
         </button>
-        <div class="notif-dropdown" id="notif-dropdown" style="display:none;">
-          <div class="notif-dropdown-header">
-            <span>Notificaciones</span>
-            <button class="notif-mark-all" onclick="markAllNotifsRead()">Marcar Todo Leído</button>
-          </div>
-          <div id="notif-list"><p style="padding:16px;color:rgba(255,255,255,0.4);font-size:0.85rem;">Sin notificaciones.</p></div>
-        </div>
       </div>
     `;
 
@@ -251,14 +244,32 @@ let _notifInterval = null;
 function initNotificationBell() {
   const session = getCurrentSession();
   if (!session) return;
+
+  // Crear el dropdown directamente en body para evitar cualquier stacking context del nav
+  if (!document.getElementById('notif-dropdown')) {
+    const dd = document.createElement('div');
+    dd.className = 'notif-dropdown';
+    dd.id = 'notif-dropdown';
+    dd.style.display = 'none';
+    dd.innerHTML = `
+      <div class="notif-dropdown-header">
+        <span>Notificaciones</span>
+        <button class="notif-mark-all" onclick="markAllNotifsRead()">Marcar Todo Leído</button>
+      </div>
+      <div id="notif-list"><p style="padding:16px;color:rgba(255,255,255,0.4);font-size:0.85rem;">Sin notificaciones.</p></div>
+    `;
+    document.body.appendChild(dd);
+  }
+
   fetchNotifications();
   _notifInterval = setInterval(fetchNotifications, 30000);
-  // Close dropdown on outside click
+
+  // Cerrar al hacer click fuera
   document.addEventListener('click', (e) => {
     const wrap = document.getElementById('notif-bell-wrap');
-    if (wrap && !wrap.contains(e.target)) {
-      const dd = document.getElementById('notif-dropdown');
-      if (dd) dd.style.display = 'none';
+    const dd = document.getElementById('notif-dropdown');
+    if (dd && wrap && !wrap.contains(e.target) && !dd.contains(e.target)) {
+      dd.style.display = 'none';
     }
   });
 }
