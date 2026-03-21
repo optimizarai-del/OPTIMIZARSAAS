@@ -224,6 +224,12 @@
             transition: all 0.2s;
         }
         .client-banner a:hover { background: rgba(167,139,250,0.2); }
+
+        /* Mention highlight in comment text */
+        .mention-highlight {
+            color: var(--accent-blue);
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -651,6 +657,130 @@
         }
 
         init();
+
+        // ── @Mention Autocomplete ──────────────────────────────────────────────────
+        let allUsersCache = null;
+        let mentionDropdown = null;
+        let activeMentionTextarea = null;
+        let mentionStart = -1;
+
+        async function getAllUsersForMentions() {
+          if (allUsersCache) return allUsersCache;
+          try {
+            const res = await fetch('/api/users');
+            allUsersCache = await res.json();
+          } catch(e) { allUsersCache = []; }
+          return allUsersCache;
+        }
+
+        function createMentionDropdown() {
+          if (mentionDropdown) mentionDropdown.remove();
+          mentionDropdown = document.createElement('div');
+          mentionDropdown.className = 'mention-dropdown';
+          mentionDropdown.style.position = 'fixed';
+          document.body.appendChild(mentionDropdown);
+          return mentionDropdown;
+        }
+
+        function hideMentionDropdown() {
+          if (mentionDropdown) mentionDropdown.style.display = 'none';
+          activeMentionTextarea = null;
+          mentionStart = -1;
+        }
+
+        async function handleMentionInput(e) {
+          const textarea = e.target;
+          const text = textarea.value;
+          const cursorPos = textarea.selectionStart;
+
+          // Find @ before cursor
+          let atIdx = -1;
+          for (let i = cursorPos - 1; i >= 0; i--) {
+            if (text[i] === '@') { atIdx = i; break; }
+            if (text[i] === ' ' || text[i] === '\n') break;
+          }
+
+          if (atIdx === -1) { hideMentionDropdown(); return; }
+
+          const query = text.slice(atIdx + 1, cursorPos).toLowerCase();
+          const users = await getAllUsersForMentions();
+          const filtered = users.filter(u =>
+            u.name.toLowerCase().includes(query) && u.id !== session.userId
+          ).slice(0, 6);
+
+          if (!filtered.length) { hideMentionDropdown(); return; }
+
+          // Position dropdown near textarea
+          const rect = textarea.getBoundingClientRect();
+          const dd = createMentionDropdown();
+          dd.style.left = rect.left + 'px';
+          dd.style.top = (rect.bottom + 4) + 'px';
+          dd.style.display = 'block';
+          activeMentionTextarea = textarea;
+          mentionStart = atIdx;
+
+          dd.innerHTML = filtered.map((u, i) => `
+            <div class="mention-item${i === 0 ? ' active' : ''}"
+              data-name="${u.name.replace(/"/g, '&quot;')}"
+              data-idx="${i}"
+              onmousedown="insertMention('${u.name.replace(/'/g, "\\'")}')">
+              <strong>@</strong>${escapeHtml(u.name)}
+            </div>
+          `).join('');
+        }
+
+        function insertMention(name) {
+          if (!activeMentionTextarea) return;
+          const ta = activeMentionTextarea;
+          const text = ta.value;
+          const cursorPos = ta.selectionStart;
+          const before = text.slice(0, mentionStart);
+          const after = text.slice(cursorPos);
+          const firstName = name.split(' ')[0]; // use first name for @mention
+          ta.value = before + '@' + firstName + ' ' + after;
+          ta.selectionStart = ta.selectionEnd = before.length + firstName.length + 2;
+          ta.focus();
+          hideMentionDropdown();
+        }
+
+        // Attach mention listener to a textarea
+        function attachMentionListener(textarea) {
+          textarea.addEventListener('input', handleMentionInput);
+          textarea.addEventListener('keydown', (e) => {
+            if (!mentionDropdown || mentionDropdown.style.display === 'none') return;
+            if (e.key === 'Escape') { hideMentionDropdown(); return; }
+            const active = mentionDropdown.querySelector('.mention-item.active');
+            const idx = active ? parseInt(active.dataset.idx) : 0;
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              const next = mentionDropdown.querySelector(`[data-idx="${idx+1}"]`);
+              if (next) { active?.classList.remove('active'); next.classList.add('active'); }
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              const prev = mentionDropdown.querySelector(`[data-idx="${idx-1}"]`);
+              if (prev) { active?.classList.remove('active'); prev.classList.add('active'); }
+            } else if (e.key === 'Enter' && active) {
+              e.preventDefault();
+              active.dispatchEvent(new MouseEvent('mousedown'));
+            }
+          });
+          textarea.addEventListener('blur', () => setTimeout(hideMentionDropdown, 150));
+        }
+
+        // Override buildCommentsHtml to attach mention listener after rendering
+        const _origBuildCommentsHtml = buildCommentsHtml;
+        function buildCommentsHtml(reqId, comments) {
+          const html = _origBuildCommentsHtml(reqId, comments);
+          // Attach listener after DOM updates
+          setTimeout(() => {
+            const ta = document.getElementById(`comment-input-${reqId}`);
+            if (ta && !ta._mentionAttached) {
+              attachMentionListener(ta);
+              ta._mentionAttached = true;
+            }
+          }, 50);
+          return html;
+        }
     </script>
 
 </body>

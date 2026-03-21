@@ -55,6 +55,34 @@ function mapUser(u) {
 }
 
 // =========================================================================
+// WEBHOOK & NOTIFICATIONS
+// =========================================================================
+function sendWebhook(event, data) {
+  try {
+    const payload = JSON.stringify({ event, data, timestamp: new Date().toISOString() });
+    const options = {
+      hostname: 'n8n.optimizar-ia.com',
+      port: 443,
+      path: '/webhook/notificaciones',
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+    };
+    const req = https.request(options);
+    req.on('error', e => console.error('Webhook error:', e.message));
+    req.setTimeout(5000, () => req.destroy());
+    req.write(payload);
+    req.end();
+  } catch(e) { console.error('Webhook exception:', e.message); }
+}
+
+async function createNotification(userId, type, message, link) {
+  const id = Date.now().toString() + Math.random().toString(36).substring(7);
+  await supabase.from('notifications').insert({
+    id, user_id: userId, type, message, link: link || '', created_at: new Date().toISOString()
+  });
+}
+
+// =========================================================================
 // PROXY CSV — Evita bloqueo CORS de Google Sheets
 // =========================================================================
 app.get('/api/proxy-csv', (req, res) => {
@@ -157,6 +185,17 @@ app.post('/api/users', async (req, res) => {
   });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true, user: { id, ...user, projectId } });
+
+  // Notify all admins + send webhook (fire-and-forget)
+  const isClient = user.role === 'user';
+  const eventType = isClient ? 'new_client' : 'new_user';
+  const notifMsg = isClient
+    ? `Nuevo cliente creado: ${user.name}${user.companyName ? ` (${user.companyName})` : ''}`
+    : `Nuevo usuario administrador creado: ${user.name}`;
+  supabase.from('users').select('id').eq('role', 'admin').then(({ data: admins }) => {
+    for (const a of (admins || [])) createNotification(a.id, eventType, notifMsg, 'admin.html');
+    sendWebhook(eventType, { id, name: user.name, email: user.email, role: user.role, companyName: user.companyName || '' });
+  });
 });
 
 // 4. UPDATE USER
@@ -341,6 +380,15 @@ app.post('/api/requirements', async (req, res) => {
   });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true, requirement: { id, projectId: finalProjectId, area, tarea, prioridad } });
+
+  // Notify all admins + send webhook (fire-and-forget)
+  const clientName = finalUserName;
+  const msg = `${clientName} cargó un nuevo requerimiento: "${tarea.substring(0, 60)}"`;
+  const link = `requerimientos.html?userId=${userId}`;
+  supabase.from('users').select('id').eq('role', 'admin').then(({ data: admins }) => {
+    for (const a of (admins || [])) createNotification(a.id, 'new_requirement', msg, link);
+    sendWebhook('new_requirement', { requirementId: id, userId, area, tarea, prioridad, clientName });
+  });
 });
 
 app.delete('/api/requirements/:id', async (req, res) => {
@@ -383,6 +431,97 @@ app.post('/api/comments', async (req, res) => {
   });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true, comment: { id, requirementId, adminId, adminName, text, createdAt: new Date().toISOString() } });
+
+  // Notify client, other admins, and @mentioned users (fire-and-forget)
+  supabase.from('requirements').select('user_id, user_name, tarea, project_id').eq('id', requirementId).single()
+    .then(async ({ data: req2 }) => {
+      if (!req2) return;
+      const shortTarea = req2.tarea.substring(0, 60);
+      const link = `requerimientos.html?userId=${req2.user_id}`;
+
+      const { data: project } = await supabase.from('projects').select('name').eq('id', req2.project_id).single();
+      const clientName = project?.name || req2.user_name || 'Cliente';
+
+      // Notify client
+      createNotification(req2.user_id, 'new_comment',
+        `${adminName} comentó en tu requerimiento: "${shortTarea}"`, link);
+
+      // Notify other admins
+      const { data: admins } = await supabase.from('users').select('id').eq('role', 'admin').neq('id', adminId);
+      for (const a of (admins || [])) {
+        createNotification(a.id, 'new_comment',
+          `${adminName} comentó en requerimiento de ${clientName}: "${shortTarea}"`, link);
+      }
+
+      // Parse @mentions and notify mentioned users
+      const rawMentions = text.match(/@(\S+)/g) || [];
+      if (rawMentions.length > 0) {
+        const mentions = [...new Set(rawMentions.map(m => m.slice(1).toLowerCase()))];
+        const { data: allUsers } = await supabase.from('users').select('id, name');
+        for (const mention of mentions) {
+          const mentionedUser = (allUsers || []).find(u =>
+            u.name.replace(/\s+/g, '').toLowerCase() === mention ||
+            u.name.split(' ')[0].toLowerCase() === mention
+          );
+          if (mentionedUser && mentionedUser.id !== adminId) {
+            createNotification(mentionedUser.id, 'mention',
+              `${adminName} te mencionó en un comentario: "${text.substring(0, 80)}"`, link);
+            sendWebhook('mention', { userId: mentionedUser.id, mentionedName: mentionedUser.name, fromName: adminName, requirementId, link });
+          }
+        }
+      }
+
+      sendWebhook('new_comment', { requirementId, adminId, adminName, text, clientName, tarea: req2.tarea });
+    });
+});
+
+// =========================================================================
+// NOTIFICATIONS ENDPOINTS
+// =========================================================================
+
+// GET notifications for a user
+app.get('/api/notifications', async (req, res) => {
+  const { userId } = req.query;
+  if (!userId) return res.status(400).json({ error: 'userId requerido.' });
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json((data || []).map(n => ({
+    id:        n.id,
+    userId:    n.user_id,
+    type:      n.type,
+    message:   n.message,
+    link:      n.link,
+    readAt:    n.read_at,
+    createdAt: n.created_at,
+  })));
+});
+
+// PATCH mark all notifications as read (must be before /:id/read to avoid route conflict)
+app.patch('/api/notifications/read-all', async (req, res) => {
+  const { userId } = req.body;
+  if (!userId) return res.status(400).json({ error: 'userId requerido.' });
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .is('read_at', null);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+// PATCH mark one notification as read
+app.patch('/api/notifications/:id/read', async (req, res) => {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
 });
 
 // Fallback

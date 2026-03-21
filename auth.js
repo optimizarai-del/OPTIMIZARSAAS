@@ -212,11 +212,141 @@ function renderAuthenticatedNav(currentPage) {
         html += `<a href="requerimientos.html" class="btn-optimizar ${currentPage === 'requerimientos' ? 'active-nav' : ''}">requerimientos</a>`;
     }
 
+    // Bell notification (all logged-in users)
+    html += `
+      <div class="notif-bell-wrap" id="notif-bell-wrap">
+        <button class="notif-bell-btn" id="notif-bell-btn" onclick="toggleNotifDropdown(event)" title="Notificaciones">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="notif-badge" id="notif-badge" style="display:none;">0</span>
+        </button>
+        <div class="notif-dropdown" id="notif-dropdown" style="display:none;">
+          <div class="notif-dropdown-header">
+            <span>Notificaciones</span>
+            <button class="notif-mark-all" onclick="markAllNotifsRead()">Marcar Todo Leído</button>
+          </div>
+          <div id="notif-list"><p style="padding:16px;color:rgba(255,255,255,0.4);font-size:0.85rem;">Sin notificaciones.</p></div>
+        </div>
+      </div>
+    `;
+
     // El perfil es accesible a todos los logueados
     html += `<a href="profile.html" class="btn-optimizar ${currentPage === 'profile' ? 'active-nav' : ''}">mi perfil</a>`;
-    
+
     // Logout Button
     html += `<button onclick="logout()" class="btn-optimizar logout-btn" style="border-color: var(--accent-pink);">salir</button>`;
-    
+
     navElement.innerHTML = html;
+    // Initialize notification bell after DOM is ready
+    setTimeout(initNotificationBell, 0);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// NOTIFICATION BELL SYSTEM
+// ──────────────────────────────────────────────────────────────────────────
+let _notifInterval = null;
+
+function initNotificationBell() {
+  const session = getCurrentSession();
+  if (!session) return;
+  fetchNotifications();
+  _notifInterval = setInterval(fetchNotifications, 30000);
+  // Close dropdown on outside click
+  document.addEventListener('click', (e) => {
+    const wrap = document.getElementById('notif-bell-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      const dd = document.getElementById('notif-dropdown');
+      if (dd) dd.style.display = 'none';
+    }
+  });
+}
+
+async function fetchNotifications() {
+  const session = getCurrentSession();
+  if (!session) return;
+  try {
+    const res = await fetch(`/api/notifications?userId=${session.userId}`);
+    if (!res.ok) return;
+    const notifications = await res.json();
+    const unread = notifications.filter(n => !n.readAt).length;
+    const badge = document.getElementById('notif-badge');
+    if (badge) {
+      badge.style.display = unread > 0 ? 'flex' : 'none';
+      badge.textContent = unread > 9 ? '9+' : unread;
+    }
+    renderNotifList(notifications);
+  } catch(e) {}
+}
+
+function renderNotifList(notifications) {
+  const list = document.getElementById('notif-list');
+  if (!list) return;
+  if (!notifications.length) {
+    list.innerHTML = '<p style="padding:16px;color:rgba(255,255,255,0.4);font-size:0.85rem;">Sin notificaciones.</p>';
+    return;
+  }
+  const typeIcons = {
+    new_requirement: '📋',
+    new_client: '👤',
+    new_user: '👥',
+    new_comment: '💬',
+    mention: '🔔'
+  };
+  list.innerHTML = notifications.slice(0, 20).map(n => {
+    const date = new Date(n.createdAt);
+    const timeAgo = formatTimeAgo(date);
+    const icon = typeIcons[n.type] || '🔔';
+    const unreadClass = !n.readAt ? 'notif-item unread' : 'notif-item';
+    return `
+      <div class="${unreadClass}" onclick="handleNotifClick('${n.id}', '${n.link}')">
+        <span class="notif-icon">${icon}</span>
+        <div class="notif-content">
+          <p class="notif-msg">${escapeNotif(n.message)}</p>
+          <span class="notif-time">${timeAgo}</span>
+        </div>
+        ${!n.readAt ? '<span class="notif-dot"></span>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeNotif(text) {
+  return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatTimeAgo(date) {
+  const diff = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diff < 60) return 'hace un momento';
+  if (diff < 3600) return `hace ${Math.floor(diff/60)} min`;
+  if (diff < 86400) return `hace ${Math.floor(diff/3600)}h`;
+  return date.toLocaleDateString('es-AR', {day:'2-digit', month:'2-digit'});
+}
+
+async function handleNotifClick(notifId, link) {
+  try { await fetch(`/api/notifications/${notifId}/read`, { method: 'PATCH' }); } catch(e) {}
+  await fetchNotifications();
+  if (link) window.location.href = link;
+}
+
+async function markAllNotifsRead() {
+  const session = getCurrentSession();
+  if (!session) return;
+  try {
+    await fetch('/api/notifications/read-all', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: session.userId })
+    });
+    await fetchNotifications();
+  } catch(e) {}
+}
+
+function toggleNotifDropdown(e) {
+  e.stopPropagation();
+  const dd = document.getElementById('notif-dropdown');
+  if (!dd) return;
+  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+  if (dd.style.display === 'block') fetchNotifications();
 }
