@@ -346,7 +346,17 @@ async function markAllNotifsRead() {
 function toggleNotifDropdown(e) {
   e.stopPropagation();
   const dd = document.getElementById('notif-dropdown');
-  if (!dd) return;
-  dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
-  if (dd.style.display === 'block') fetchNotifications();
+  const btn = document.getElementById('notif-bell-btn');
+  if (!dd || !btn) return;
+  const isHidden = dd.style.display === 'none' || dd.style.display === '';
+  if (isHidden) {
+    const rect = btn.getBoundingClientRect();
+    dd.style.top = (rect.bottom + 8) + 'px';
+    dd.style.right = (window.innerWidth - rect.right) + 'px';
+    dd.style.left = 'auto';
+    dd.style.display = 'block';
+    fetchNotifications();
+  } else {
+    dd.style.display = 'none';
+  }
 }
