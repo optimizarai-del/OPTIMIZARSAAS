@@ -410,6 +410,13 @@
             class="glass-input" placeholder="ej: Cuatro millones de pesos" required>
         </div>
 
+        <div class="field-group" style="grid-column: 1 / -1;">
+          <label for="equipamientos">equipamientos</label>
+          <textarea id="equipamientos" name="equipamientos"
+            class="glass-input" rows="4"
+            placeholder="Detallá los equipos, materiales e instalaciones incluidas en la prestación..."></textarea>
+        </div>
+
         <div class="field-group highlight-input">
           <label for="monto_total_pesos">monto total en pesos ($)</label>
           <div class="input-prefix-wrap">
@@ -548,6 +555,7 @@
       hora_fin:              document.getElementById('hora_fin').value,
       dias_para_pagar:       document.getElementById('dias_para_pagar').value,
       valor_total_prestacion:document.getElementById('valor_total_prestacion').value.trim(),
+      equipamientos:         document.getElementById('equipamientos').value.trim(),
       monto_total_pesos:     parseFloat(document.getElementById('monto_total_pesos').value) || 0,
       monto_total_reserva:   parseFloat(document.getElementById('monto_total_reserva').value) || 0,
       saldo_a_cancelar:      parseFloat(document.getElementById('saldo_a_cancelar').value) || 0,

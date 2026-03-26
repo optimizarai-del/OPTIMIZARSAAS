@@ -363,6 +363,19 @@ app.post('/api/requirements', async (req, res) => {
     if (!finalUserName)  finalUserName  = user?.name || 'Usuario';
   }
 
+  // Si el usuario no tiene proyecto asignado, crear uno automáticamente
+  if (!finalProjectId && userId) {
+    const { data: newProject } = await supabase
+      .from('projects')
+      .insert({ name: finalUserName || userId })
+      .select()
+      .single();
+    if (newProject) {
+      finalProjectId = newProject.id;
+      await supabase.from('users').update({ project_id: newProject.id, is_project_owner: true }).eq('id', userId);
+    }
+  }
+
   if (!finalProjectId || !area || !tarea || !prioridad) {
     return res.status(400).json({ success: false, message: 'Faltan campos requeridos.' });
   }
