@@ -617,6 +617,7 @@
 
             const payload = {
                 userId:        viewUserId,
+                projectId:     session ? session.projectId : null,
                 userName:      session ? session.name : 'Usuario',
                 area:          document.getElementById('req-area').value.trim(),
                 tarea:         document.getElementById('req-tarea').value.trim(),
