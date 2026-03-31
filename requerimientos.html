@@ -336,7 +336,7 @@
 
         // userId que se usa para cargar requerimientos
         // Para clientes: usa su propio userId (el servidor resuelve al projectId)
-        const viewUserId = isAdmin && targetUserId ? targetUserId : (session ? session.userId : null);
+        const viewUserId = isAdmin && targetUserId ? targetUserId : (session ? (session.userId || session.id) : null);
 
         let requirements = [];
         let clientInfo = null;
@@ -620,7 +620,7 @@
             errEl.style.display = 'none';
 
             const payload = {
-                userId:        viewUserId,
+                userId:        session ? (session.userId || session.id) : viewUserId,
                 projectId:     session ? session.projectId : null,
                 userName:      session ? session.name : 'Usuario',
                 area:          document.getElementById('req-area').value.trim(),

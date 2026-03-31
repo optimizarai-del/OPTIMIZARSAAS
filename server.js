@@ -33,6 +33,7 @@ function mapUser(u) {
   const p = u.projects || {};
   return {
     id:                      u.id,
+    userId:                  u.id,   // alias para compatibilidad con el frontend
     name:                    u.name,
     email:                   u.email,
     password:                u.password,
