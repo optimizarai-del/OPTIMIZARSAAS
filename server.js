@@ -376,9 +376,13 @@ app.post('/api/requirements', async (req, res) => {
     }
   }
 
-  if (!finalProjectId || !area || !tarea || !prioridad) {
-    return res.status(400).json({ success: false, message: 'Faltan campos requeridos.' });
+  if (!finalProjectId) {
+    return res.status(400).json({ success: false, message: 'No se pudo identificar el proyecto del usuario.' });
   }
+  // Valores por defecto si vienen vacíos
+  const finalArea      = area      || 'Sin área';
+  const finalTarea     = tarea     || 'Sin descripción';
+  const finalPrioridad = prioridad || 'media';
 
   const id = Date.now().toString() + Math.random().toString(36).substring(7);
   const { error } = await supabase.from('requirements').insert({
@@ -386,13 +390,14 @@ app.post('/api/requirements', async (req, res) => {
     project_id:      finalProjectId,
     user_id:         userId  || 'unknown',
     user_name:       finalUserName,
-    area, tarea,
+    area:            finalArea,
+    tarea:           finalTarea,
     como_se_realiza: comoSeRealiza || '',
-    prioridad,
+    prioridad:       finalPrioridad,
     tiempo_manual:   tiempoManual  || '',
   });
   if (error) return res.status(500).json({ error: error.message });
-  res.json({ success: true, requirement: { id, projectId: finalProjectId, area, tarea, prioridad } });
+  res.json({ success: true, requirement: { id, projectId: finalProjectId, area: finalArea, tarea: finalTarea, prioridad: finalPrioridad } });
 
   // Notify all admins + send webhook (fire-and-forget)
   const clientName = finalUserName;
