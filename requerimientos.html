@@ -475,9 +475,7 @@
             card.className = 'req-card';
             card.id = `card-${r.id}`;
 
-            const deleteBtn = !isAdmin
-                ? `<button class="btn-delete" onclick="deleteRequirement('${r.id}')">Eliminar</button>`
-                : '';
+            const deleteBtn = `<button class="btn-delete" onclick="deleteRequirement('${r.id}')">Eliminar</button>`;
 
             const commentsHtml = buildCommentsHtml(r.id, comments);
 
