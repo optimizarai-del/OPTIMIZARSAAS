@@ -400,7 +400,11 @@
         async function loadRequirements() {
             if (!viewUserId) return;
             try {
-                const res = await fetch(`/api/requirements?userId=${viewUserId}`);
+                const projectId = session ? session.projectId : null;
+                const url = projectId
+                    ? `/api/requirements?projectId=${projectId}&userId=${viewUserId}`
+                    : `/api/requirements?userId=${viewUserId}`;
+                const res = await fetch(url);
                 requirements = await res.json();
                 await renderList();
             } catch(e) {
