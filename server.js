@@ -383,7 +383,11 @@ app.post('/api/requirements', async (req, res) => {
       finalProjectId = newProject.id;
       await supabase.from('users').update({ project_id: newProject.id, is_project_owner: true }).eq('id', userId);
     } else {
-      console.error('Error auto-creando proyecto:', projErr?.message);
+      console.error('Error auto-creando proyecto:', JSON.stringify(projErr));
+      return res.status(500).json({
+        success: false,
+        message: `Error al crear proyecto automáticamente: ${projErr?.message || projErr?.code || 'error desconocido'}`
+      });
     }
   }
 
@@ -551,6 +555,103 @@ app.patch('/api/notifications/:id/read', async (req, res) => {
     .eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ success: true });
+});
+
+// =========================================================================
+// DIAGNOSTIC ENDPOINT (admin use only)
+// =========================================================================
+app.get('/api/debug/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .select('id, name, email, role, project_id, is_project_owner')
+      .eq('id', userId)
+      .single();
+
+    let projectData = null;
+    let projectErr = null;
+    if (user?.project_id) {
+      const { data: proj, error: pe } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', user.project_id)
+        .single();
+      projectData = proj;
+      projectErr = pe?.message;
+    }
+
+    // Test insert into projects
+    const { data: testProj, error: testErr } = await supabase
+      .from('projects')
+      .insert({
+        name: 'TEST_PROJECT_DELETE_ME',
+        csv_url: '',
+        webhook_url: '',
+        crm_url: '',
+        agente_externo_url: '',
+        special_buttons: [],
+        action_buttons: [],
+        custom_charts: [],
+      })
+      .select()
+      .single();
+
+    // Clean up test
+    if (testProj?.id) {
+      await supabase.from('projects').delete().eq('id', testProj.id);
+    }
+
+    res.json({
+      supabaseConfigured: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY),
+      user: user || null,
+      userError: userErr?.message || null,
+      projectData,
+      projectError: projectErr,
+      testProjectInsert: testProj ? 'SUCCESS' : 'FAILED: ' + testErr?.message,
+    });
+  } catch(e) {
+    res.json({ exception: e.message });
+  }
+});
+
+// Repair endpoint: creates project for user if missing
+app.post('/api/admin/repair-user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('id, name, project_id')
+      .eq('id', userId)
+      .single();
+
+    if (!user) return res.json({ success: false, message: 'Usuario no encontrado en Supabase.' });
+    if (user.project_id) return res.json({ success: true, message: 'El usuario ya tiene proyecto.', projectId: user.project_id });
+
+    const { data: newProject, error: projErr } = await supabase
+      .from('projects')
+      .insert({
+        name: user.name || userId,
+        csv_url: '',
+        webhook_url: '',
+        crm_url: '',
+        agente_externo_url: '',
+        special_buttons: [],
+        action_buttons: [],
+        custom_charts: [],
+      })
+      .select()
+      .single();
+
+    if (projErr || !newProject) {
+      return res.json({ success: false, message: 'Error creando proyecto: ' + (projErr?.message || 'unknown') });
+    }
+
+    await supabase.from('users').update({ project_id: newProject.id, is_project_owner: true }).eq('id', userId);
+    res.json({ success: true, message: 'Proyecto creado y asignado.', projectId: newProject.id });
+  } catch(e) {
+    res.json({ success: false, message: e.message });
+  }
 });
 
 // Fallback
