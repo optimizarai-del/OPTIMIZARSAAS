@@ -363,21 +363,32 @@ app.post('/api/requirements', async (req, res) => {
     if (!finalUserName)  finalUserName  = user?.name || 'Usuario';
   }
 
-  // Si el usuario no tiene proyecto asignado, crear uno automáticamente
+  // Si el usuario no tiene proyecto asignado, crear uno automáticamente con todos los campos requeridos
   if (!finalProjectId && userId) {
-    const { data: newProject } = await supabase
+    const { data: newProject, error: projErr } = await supabase
       .from('projects')
-      .insert({ name: finalUserName || userId })
+      .insert({
+        name:               finalUserName || userId,
+        csv_url:            '',
+        webhook_url:        '',
+        crm_url:            '',
+        agente_externo_url: '',
+        special_buttons:    [],
+        action_buttons:     [],
+        custom_charts:      [],
+      })
       .select()
       .single();
     if (newProject) {
       finalProjectId = newProject.id;
       await supabase.from('users').update({ project_id: newProject.id, is_project_owner: true }).eq('id', userId);
+    } else {
+      console.error('Error auto-creando proyecto:', projErr?.message);
     }
   }
 
   if (!finalProjectId) {
-    return res.status(400).json({ success: false, message: 'No se pudo identificar el proyecto del usuario.' });
+    return res.status(400).json({ success: false, message: 'No se pudo identificar el proyecto del usuario. Contactá al administrador.' });
   }
   // Valores por defecto si vienen vacíos
   const finalArea      = area      || 'Sin área';
