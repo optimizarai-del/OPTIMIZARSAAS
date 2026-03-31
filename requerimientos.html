@@ -405,7 +405,8 @@
                     ? `/api/requirements?projectId=${projectId}&userId=${viewUserId}`
                     : `/api/requirements?userId=${viewUserId}`;
                 const res = await fetch(url);
-                requirements = await res.json();
+                const data = await res.json();
+                requirements = Array.isArray(data) ? data : [];
                 await renderList();
             } catch(e) {
                 console.error('Error cargando requerimientos:', e);
@@ -448,6 +449,16 @@
                     container.appendChild(card);
                 }
             }
+
+            // Attach @mention listeners to all comment textareas after render
+            setTimeout(() => {
+                document.querySelectorAll('[id^="comment-input-"]').forEach(ta => {
+                    if (!ta._mentionAttached) {
+                        attachMentionListener(ta);
+                        ta._mentionAttached = true;
+                    }
+                });
+            }, 100);
         }
 
         // ── Cargar comentarios de un requerimiento ────────────────────────────
@@ -772,20 +783,6 @@
           textarea.addEventListener('blur', () => setTimeout(hideMentionDropdown, 150));
         }
 
-        // Override buildCommentsHtml to attach mention listener after rendering
-        const _origBuildCommentsHtml = buildCommentsHtml;
-        function buildCommentsHtml(reqId, comments) {
-          const html = _origBuildCommentsHtml(reqId, comments);
-          // Attach listener after DOM updates
-          setTimeout(() => {
-            const ta = document.getElementById(`comment-input-${reqId}`);
-            if (ta && !ta._mentionAttached) {
-              attachMentionListener(ta);
-              ta._mentionAttached = true;
-            }
-          }, 50);
-          return html;
-        }
     </script>
 
 </body>
