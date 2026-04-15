@@ -379,9 +379,9 @@
         </div>
 
         <div class="field-group">
-          <label for="dias_para_pagar">días para pagar</label>
-          <input type="number" id="dias_para_pagar" name="dias_para_pagar"
-            class="glass-input" placeholder="ej: 30" min="1" required>
+          <label for="dia_fin_evento">día fin evento</label>
+          <input type="date" id="dia_fin_evento" name="dia_fin_evento"
+            class="glass-input">
         </div>
 
         <div class="field-group">
@@ -394,6 +394,12 @@
           <label for="hora_fin">hora de fin</label>
           <input type="time" id="hora_fin" name="hora_fin"
             class="glass-input" required>
+        </div>
+
+        <div class="field-group">
+          <label for="dias_para_pagar">días para pagar</label>
+          <input type="number" id="dias_para_pagar" name="dias_para_pagar"
+            class="glass-input" placeholder="ej: 30" min="1" required>
         </div>
 
       </div>
@@ -551,6 +557,7 @@
       domicilio_prestatario: document.getElementById('domicilio_prestatario').value.trim(),
       lugar_evento:          document.getElementById('lugar_evento').value.trim(),
       dia_evento:            document.getElementById('dia_evento').value,
+      dia_fin_evento:        document.getElementById('dia_fin_evento').value,
       hora_inicio:           document.getElementById('hora_inicio').value,
       hora_fin:              document.getElementById('hora_fin').value,
       dias_para_pagar:       document.getElementById('dias_para_pagar').value,
